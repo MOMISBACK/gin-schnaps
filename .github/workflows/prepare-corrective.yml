@@ -42,7 +42,7 @@ jobs:
         with:
           ref: fix/0.8.2-reliability
           fetch-depth: 0
-      - name: Record the exact verified source without executing it
+      - name: Record the exact verified application source without workflow writes
         env:
           EXPECTED_HEAD: ${{ github.sha }}
         run: |
@@ -53,7 +53,7 @@ jobs:
           git read-tree --reset -u 7827c92a26ba60120181010377a332c0bdabbcf4
           git apply --index --unidiff-zero /tmp/corrective.patch
           test "$(git write-tree)" = 'eb2d62967febb73e07d24c69ed109198c0eadc26'
-          git restore --source=HEAD --staged --worktree .github/workflows/prepare-corrective.yml
+          git restore --source=HEAD --staged --worktree .github/workflows
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
           git commit -m 'fix: retain editable history, protect PCR drafts and verify public downloads'
