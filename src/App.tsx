@@ -16,6 +16,8 @@ import { reverseComplement } from './core/dna';
 import { ExportDialog } from './components/ExportDialog';
 import { RecoveryPanel } from './components/RecoveryPanel';
 import { base64ToBytes } from './formats/dna-packets';
+import { HelpDialog } from './components/HelpDialog';
+import { HelpDetails } from './components/HelpDetails';
 import React, { useEffect, useReducer, useRef, useState } from 'react';
 import { TranslationPanel } from './components/analysis/TranslationPanel';
 import { RestrictionPanel } from './components/analysis/RestrictionPanel';
@@ -67,11 +69,11 @@ function FeatureTable({ entry, select, toggle, edit }: { entry: OpenDocument; se
           <td><button className="icon-button" aria-label={`${entry.hiddenFeatures.includes(feature.id) ? "Show" : "Hide"} ${feature.name}`} aria-pressed={!entry.hiddenFeatures.includes(feature.id)} onClick={() => toggle(feature.id)}><Icon name={entry.hiddenFeatures.includes(feature.id) ? 'eyeOff' : 'eye'}/></button></td>
           <td><button className="feature-name" onClick={() => { if(selection)select(selection);else setExpanded(feature.id); }}><span className="color-swatch" style={{ background: feature.color }}/>{feature.name}</button></td>
           <td className="numeric">{formatLocation(feature)}</td><td className="numeric">{feature.unresolved ? 'Unresolved' : `${number(feature.segments.reduce((n,s)=>n+s.end-s.start,0))} bp`}</td><td>{feature.unresolved ? 'See descriptor' : feature.strand === 1 ? '→ (+)' : feature.strand === -1 ? '← (−)' : '—'}</td><td>{feature.type}{feature.reviewRequired && <span className="review-badge">Needs review</span>}</td><td><button className="small-button" aria-label={`Edit ${feature.name}`} onClick={() => edit(feature.id)}>Edit…</button></td>
-        </tr>{expanded === feature.id && <tr className="detail-row"><td colSpan={8}>{feature.unresolved ? <p className="analysis-warning">{feature.unresolved.reason} Descriptor preserved; not projected on the map and not translated.</p> : !selection && <div><p>Disjoint feature: choose an individual part. The intervening bases are not part of this feature.</p>{feature.segments.map((s,i)=><button key={i} onClick={()=>select({start:s.start,length:s.end-s.start})}>Part {i+1}: {s.start+1}..{s.end}</button>)}</div>}<p>Identifier: {feature.id} · Internal location: {feature.segments.map(s => `[${s.start}, ${s.end})`).join(' + ')}</p>
-              {feature.qualifiers.map((q, i) => <p className="qualifier-value" key={i}><code>/{q.key}</code>{q.value !== null && <> = {q.value}</>}{q.key === 'translation' && <strong> — declared value, not recalculated</strong>}</p>)}
-              {!!feature.archivedQualifiers.length && <div className="archived-qualifiers"><strong>Archived values — do not use as current results</strong>{feature.archivedQualifiers.map((q, i) => <p key={i}><code>/{q.key}</code> = {q.value} · {q.reason}</p>)}</div>}
+        </tr>{expanded === feature.id && <tr className="detail-row"><td colSpan={8}>{feature.unresolved ? <p className="analysis-warning">{feature.unresolved.reason} Descriptor preserved; not projected on the map and not translated.</p> : !selection && <div><p>Select a feature segment:</p>{feature.segments.map((s,i)=><button key={i} onClick={()=>select({start:s.start,length:s.end-s.start})}>Part {i+1}: {s.start+1}..{s.end}</button>)}</div>}<p>Identifier: {feature.id} · Internal location: {feature.segments.map(s => `[${s.start}, ${s.end})`).join(' + ')}</p>
+              {feature.qualifiers.map((q, i) => <p className="qualifier-value" key={i}><code>/{q.key}</code>{q.value !== null && <> = {q.value}</>}{q.key === 'translation' && <strong> — imported</strong>}</p>)}
+              {!!feature.archivedQualifiers.length && <div className="archived-qualifiers"><strong>Archived values (obsolete)</strong>{feature.archivedQualifiers.map((q, i) => <p key={i}><code>/{q.key}</code> = {q.value} · {q.reason}</p>)}</div>}
             </td></tr>}</React.Fragment>;
-      })}</tbody></table>{!features.length && <p className="empty-message">No features to display.</p>}</div>
+      })}</tbody></table>{!features.length && <p className="empty-message">No features.</p>}</div>
   </div>;
 }
 function InfoPanel({ entry, close, editTopology }: { entry: OpenDocument; close: () => void; editTopology: () => void }) {
@@ -87,7 +89,7 @@ function InfoPanel({ entry, close, editTopology }: { entry: OpenDocument; close:
       <h3>Selection</h3>{range ? <><p className="numeric">{number(range.start)} → {number(range.end)} · {number(entry.selection!.length)} bp</p>{selectedFeature && <p><span className="color-swatch" style={{ background: selectedFeature.color }}/>{selectedFeature.name}</p>}
         {range.end < range.start && <p className="origin-note">The selection crosses the origin.</p>}</> : <p className="muted">No region selected.</p>}
       {entry.doc.sourceArchive && <><h3>Source {entry.doc.sourceArchive.format === 'genbank' ? 'GenBank' : '.dna'} original</h3><p>{entry.doc.sourceArchive.filename}</p><p className="origin-note">{entry.doc.sourceArchive.superseded ? "Archive predates the edits: this is not the current document." : "Original source preserved; not all metadata are interpreted."}</p><button className="small-button" onClick={() => downloadFile(entry.doc.sourceArchive!.format === 'genbank' ? "ORIGINAL_SOURCE.gb" : "ORIGINAL_SOURCE.dna", entry.doc.sourceArchive!.format === 'genbank' ? entry.doc.sourceArchive!.text : base64ToBytes(entry.doc.sourceArchive!.base64), 'application/octet-stream')}>Export original source</button>{entry.doc.sourceArchive.format === 'snapgene' && <details className="import-report" open><summary>.dna import report</summary>{entry.doc.sourceArchive.report.map((r, i) => <div key={i}><strong>{r.label} · {r.bytes} bytes</strong><span className={r.status === 'archived' ? 'archive-status' : 'import-status'}>{r.status === 'archived' ? "Archive only" : "Interpreted (see limitations)"}</span><p>{r.detail}</p></div>)}</details>}</>}
-      <h3>Privacy</h3><p className="muted">{isDesktop()?'Processed locally in this application.':'Processed in your browser.'} No account, sequence upload or remote saving.</p>
+
     </div>
   </aside>;
 }
@@ -112,6 +114,7 @@ export default function App() {
   const width = useWindowWidth();
   const [explorerWanted, setExplorerWanted] = useState(storedExplorer);
   const [infoWanted, setInfoWanted] = useState(false);
+  const [helpOpen, setHelpOpen] = useState(false);
   const [viewport, setViewport] = useState({ start: 0, end: 1 });
   const [explorerWidth, setExplorerWidth] = useState(208);
   const [infoWidth, setInfoWidth] = useState(280);
@@ -152,7 +155,7 @@ export default function App() {
     if (!dialog) return;
     dispatch({ type: 'commit', key: dialog.key, doc: result.doc, selection: result.selection });
     setDialog(null);
-    setMessage({ text: result.warnings.join(' ') || "Changes applied. Export the document to keep your work.", error: false });
+    setMessage({ text: result.warnings.join(' ') || "Changes applied.", error: false });
   };
   const select = (selection: Selection) => dispatch({ type: 'select', selection });
   const notifyError = (text: string) => setMessage({ text, error: true });
@@ -166,7 +169,7 @@ export default function App() {
     const safe = entry.doc.name.replace(/[^a-zA-Z0-9._-]/g, '_').slice(0, 100) || 'sequence';
     try { downloadFile(`${safe}.sg.json`, serializeDocument(entry.doc)); } catch (error) { notifyError((error as Error).message); return; }
     setPendingExport({ key: entry.key, doc: entry.doc });
-    setMessage({ text: "Native export requested. Check that you received the file. The source file has not been overwritten." + (hasPcrDraft(entry.doc,pcrInputs[entry.key]) ? " Unsaved PCR draft NOT included: use Save PCR setup first." : ""), error: false });
+    setMessage({ text: "Download started. Confirm receipt." + (hasPcrDraft(entry.doc,pcrInputs[entry.key]) ? " Unsaved PCR draft NOT included: use Save PCR setup first." : ""), error: false });
   };
   const openDemo = (linear = false) => {
     const existing = workspace.documents.find(d => d.doc.id === (linear ? 'demo-linear-1200' : 'demo-circular-4800'));
@@ -183,7 +186,7 @@ export default function App() {
       const parsed = await importLocalFile(file);
       if (workspaceRef.current.documents.length + parsed.documents.length > MAX_OPEN_DOCUMENTS) throw new Error("Maximum 16 open documents. Close tabs before trying again.");
       dispatch({ type: 'open', documents: parsed.documents, source: file.name });
-      setMessage({ text: parsed.warnings.join(' ') || "Document imported and validated. No data transmitted.", error: false });
+      setMessage({ text: parsed.warnings.join(' ') || "Document opened.", error: false });
     } catch (error) { notifyError(error instanceof Error ? error.message : "Import error."); }
     finally { importBusy.current = false; setLoading(false); if (fileInput.current) fileInput.current.value = ''; }
   };
@@ -223,7 +226,7 @@ export default function App() {
         bindings.current.set(current.nextKey,{token:file.token,path:file.path});
       }else{await nativeCall('desktop_release',{token:file.token});}
       dispatch({type:'open',documents:parsed.documents,source:file.name});
-      setMessage({text:parsed.warnings.join(' ')||'Opened locally. Save writes .sg.json; interchange sources are protected.',error:false});
+      setMessage({text:parsed.warnings.join(' ')||'Document opened.',error:false});
     }catch(e){if(file)void nativeCall('desktop_release',{token:file.token}).catch(()=>{});notifyError((e as Error).message);}
     finally{importBusy.current=false;setNativeBusy(false);}
   };
@@ -263,7 +266,7 @@ export default function App() {
     setCopiedDNA({ sequence: text, sourceName: entry.doc.name });
     try {
       await writeClipboardText(text);
-      setMessage({ text: `${number(text.length)} bases copied${complementary ? " as reverse complement (5′→3′)" : " in the reference-strand direction"}. Source annotations are not copied.`, error: false });
+      setMessage({ text: `${number(text.length)} bp copied${complementary ? " (reverse complement)" : ""}.`, error: false });
     } catch {
       notifyError('System clipboard access was refused. The bases remain in session memory: switch documents, open Paste and choose Use last copied DNA.');
     }
@@ -281,7 +284,7 @@ export default function App() {
     if (!target || target.doc !== pasteDialog.doc) { notifyError('The destination changed while the paste was open. Cancel and reopen Paste. Nothing was applied.'); return; }
     dispatch({ type: 'commit', key: target.key, doc: result.doc, selection: result.selection });
     setPasteDialog(null);
-    setMessage({ text: 'Pasted bases applied. Undo is available. Save or export the destination to keep the change. ' + result.warnings.join(' '), error: false });
+    setMessage({ text: 'Pasted. ' + result.warnings.join(' '), error: false });
   };
   const createPastedDocument = (doc: SequenceDocument) => {
     if (workspaceRef.current.documents.length >= MAX_OPEN_DOCUMENTS) { notifyError('Maximum open documents reached. Close a document first.'); return; }
@@ -357,7 +360,7 @@ export default function App() {
     onDragOver={event => { if (event.dataTransfer.types.includes('Files')) event.preventDefault(); }}
     onDrop={event => { event.preventDefault(); void importFiles(event.dataTransfer.files); }}>
     <input ref={fileInput} type="file" accept=".fa,.fasta,.fna,.gb,.gbk,.genbank,.dna,.sg.json,.json" hidden data-testid="file-input" onChange={e => { if (e.target.files) void importFiles(e.target.files); }}/>
-    <header className="document-strip"><div className="brand"><button className="icon-button" aria-label="Show or hide explorer" aria-pressed={layout.explorer} onClick={toggleExplorer}><Icon name="panel"/></button><strong>Gin Schnaps</strong><span className="version">0.8.3</span></div>
+    <header className="document-strip"><div className="brand"><button className="icon-button" aria-label="Show or hide explorer" aria-pressed={layout.explorer} onClick={toggleExplorer}><Icon name="panel"/></button><strong>Gin Schnaps</strong><span className="version">0.8.4</span></div>
       <div className="document-tabs" role="tablist" aria-label="Open documents">{workspace.documents.map(doc => <div key={doc.key} className={`document-tab ${doc.key === workspace.active ? 'active' : ''}`}>
         <button role="tab" aria-selected={doc.key === workspace.active} title={doc.doc.name} aria-label={doc.doc.name} onClick={() => dispatch({ type: 'activate', key: doc.key })}><Icon name={doc.doc.topology === 'circular' ? 'circle' : 'linear'}/><span>{doc.doc.name}</span>{needsExport(doc) && <span className="dirty-dot" aria-label="Unexported changes">●</span>}</button>
         <button className="icon-button close-document" aria-label={`Close ${doc.doc.name}`} onClick={() => closeDocument(doc.key)}><Icon name="close" size={12}/></button>
@@ -371,7 +374,7 @@ export default function App() {
         <div className="document-list">{workspace.documents.filter(d => d.doc.name.toLowerCase().includes(query.toLowerCase())).map(d => <button key={d.key} className={d.key === workspace.active ? 'current' : ''} onClick={() => dispatch({ type: 'activate', key: d.key })}>
           <Icon name={d.doc.topology === 'circular' ? 'circle' : 'linear'}/><span>{d.doc.name}<small>{number(d.doc.sequence.length)} bp · {d.doc.topology === 'circular' ? "circular" : "linear"}</small></span></button>)}</div>
         <h3 className="section-label">SYNTHETIC EXAMPLES</h3><button className="example-link" onClick={() => openDemo()}><Icon name="circle"/>Plasmid · 4,800 bp</button><button className="example-link" onClick={() => openDemo(true)}><Icon name="linear"/>Fragment · 1,200 bp</button>
-        <div className="explorer-note"><Icon name="info"/><p>Local files only.<br/>No account or synchronization.</p></div>{separator('explorer')}
+        {separator('explorer')}
       </aside>}
       <main className="document-workspace">
         <div className="document-toolbar" role="toolbar" aria-label="Document tools">
@@ -381,7 +384,7 @@ export default function App() {
           <Tool icon="undo" title="Undo (⌘/Ctrl Z)" disabled={!entry?.past.length} onClick={() => dispatch({ type: 'undo' })}/><Tool icon="redo" title="Redo (⌘/Ctrl ⇧ Z)" disabled={!entry?.future.length} onClick={() => dispatch({ type: 'redo' })}/><Tool icon="sequence" title="Edit bases" disabled={!entry} onClick={() => openEditor('bases')}>Edit</Tool>
           <Tool icon="copy" title="Copy selection (⌘/Ctrl C)" disabled={!entry?.selection} onClick={() => void copySelection()}/><Tool icon="copy" title="Paste DNA (⌘/Ctrl V)" disabled={loading || nativeBusy} onClick={() => openPaste()}>Paste…</Tool><span className="tool-divider"/>
           <Tool icon="cut" title="Open restriction analysis" disabled={!entry} onClick={() => dispatch({ type: 'view', view: 'enzymes' })}>Digestion</Tool><Tool icon="primer" title="Simulate PCR" disabled={!entry} onClick={() => dispatch({ type: 'view', view: 'primers' })}>PCR</Tool>
-          <span className="flex-spacer"/><span className="readonly-badge">{entry && needsExport(entry) ? "Modified · not exported" : "Prototype · step 8"}</span><Tool icon="info" title="Document information" disabled={!entry} active={layout.info} onClick={() => setInfoWanted(!infoWanted)}/>
+          <span className="flex-spacer"/>{entry && needsExport(entry) && <span className="readonly-badge">Modified</span>}<Tool icon="info" title="Document information" disabled={!entry} active={layout.info} onClick={() => setInfoWanted(!infoWanted)}/>
         </div>
         <div className="command-bar" role="toolbar" aria-label="Document operations">
           <button onClick={() => { setMessage(null); setDocumentDialog('new'); }} disabled={loading || workspace.documents.length >= MAX_OPEN_DOCUMENTS} title="New document from pasted DNA (⌘/Ctrl N)"><Icon name="plus"/>New</button>
@@ -417,7 +420,7 @@ export default function App() {
               {entry.view === 'translation' && <TranslationPanel key={entry.key} entry={entry}/>}
               {entry.view === 'enzymes' && <RestrictionPanel key={entry.key} entry={entry} onSelect={s => { select(s); dispatch({ type: 'view', view: 'map' }); }}/>}
               {entry.view === 'primers' && <PcrPanel onCommit={result=>{dispatch({type:'commit',key:entry.key,doc:result.doc,selection:result.selection});setPendingExport(null);if(result.warnings.length)setMessage({text:result.warnings.join(' '),error:false});}} key={entry.key} entry={entry} input={pcrInputs[entry.key] ?? recipeOptions(entry.doc) ?? EMPTY_PCR} setInput={input => setPcrInputs(old => ({ ...old, [entry.key]: input }))} onSelect={s => { select(s); dispatch({ type: 'view', view: 'map' }); }}/>}
-              {entry.view === 'history' && <div className="history-view"><h2>Document history</h2><div className="history-event"><Icon name="folder"/><div><strong>Document opened in this workspace</strong><p>{entry.source}</p><small>No cloning history imported or reconstructed. The operations below come from the native document; they are not evidence of experimental work.</small></div></div>{entry.doc.historyOmitted > 0 && <p className="analysis-warning" data-testid="history-retention">{entry.doc.historyOmitted} older operation description(s) are no longer retained in this document. Sequence, annotations, oligos and source archives are not removed. Older exports may retain earlier descriptions.</p>}{entry.doc.history.map((event, i) => <div className="history-event" key={i}><Icon name="history"/><div><strong>{entry.doc.historyOmitted + i + 1}. {event.summary}</strong>{event.warnings.map((w,j) => <p key={j}>{w}</p>)}</div></div>)}<p className="field-note">Retained journal: up to 500 recent descriptions and about 512 kB after each edit; older descriptions are counted, not silently claimed as complete. Undo/redo: {entry.past.length} previous state(s), {entry.future.length} next state(s), in this session only.</p></div>}
+              {entry.view === 'history' && <div className="history-view"><h2>Document history</h2><div className="history-event"><Icon name="folder"/><div><strong>Document opened in this workspace</strong><p>{entry.source}</p><small>Software operations</small></div></div>{entry.doc.historyOmitted > 0 && <p className="analysis-warning" data-testid="history-retention">{entry.doc.historyOmitted} older operation description(s) are no longer retained in this document. Sequence, annotations, oligos and source archives are not removed. Older exports may retain earlier descriptions.</p>}{entry.doc.history.map((event, i) => <div className="history-event" key={i}><Icon name="history"/><div><strong>{entry.doc.historyOmitted + i + 1}. {event.summary}</strong>{event.warnings.map((w,j) => <p key={j}>{w}</p>)}</div></div>)}<HelpDetails label="History retention"><p>Up to 500 recent descriptions and 512 kB. Omitted entries are counted. This is not an experimental audit trail.</p><p>Session undo: {entry.past.length} · redo: {entry.future.length}</p></HelpDetails></div>}
             </div>
             {entry.view === 'sequence' && <Minimap entry={entry} viewport={viewport} onNavigate={fraction => { const node = document.querySelector<HTMLElement>('.sequence-viewport'); if (node) node.scrollTop = fraction * (node.scrollHeight - node.clientHeight); }}/ >}
             {(entry.view === 'map' || entry.view === 'sequence') && <SelectionBar key={`selection-${entry.key}`} doc={entry.doc} selection={entry.selection} onSelect={select} onError={notifyError}/>}
@@ -426,7 +429,8 @@ export default function App() {
         </div>}
       </main>
     </div>
-    <footer className="status-bar" role="status"><span>{loading ? "Reading file…" : entry ? `${number(entry.doc.sequence.length)} bp · DNA ${entry.doc.topology === 'circular' ? "circular" : "linear"}` : "No document"}</span><span className="status-selection" data-testid="selection-status">{range ? `Selection ${number(range.start)} → ${number(range.end)} · ${number(entry!.selection!.length)} bp${range.end < range.start ? " · crosses origin" : ''}` : "No selection"}</span><span className="flex-spacer"/><button className="recovery-toggle" onClick={() => setRecoveryOpen(true)}>Recovery</button><span>{draftEntries.length ? `${draftEntries.length} PCR draft(s) not saved · ` : ""}Local · no transmission</span></footer>
+    <footer className="status-bar" role="status"><span>{loading ? "Reading file…" : entry ? `${number(entry.doc.sequence.length)} bp · DNA ${entry.doc.topology === 'circular' ? "circular" : "linear"}` : "No document"}</span><span className="status-selection" data-testid="selection-status">{range ? `Selection ${number(range.start)} → ${number(range.end)} · ${number(entry!.selection!.length)} bp${range.end < range.start ? " · crosses origin" : ''}` : "No selection"}</span><span className="flex-spacer"/><button className="recovery-toggle" onClick={() => setRecoveryOpen(true)}>Recovery</button>{draftEntries.length > 0 && <span>{draftEntries.length} PCR draft(s) not saved</span>}<button className="recovery-toggle" onClick={() => setHelpOpen(true)}>Help</button></footer>
+    {helpOpen && <HelpDialog version="0.8.4" onClose={() => setHelpOpen(false)}/>}
     {pasteDialog && <PasteDialog doc={pasteDialog.doc} selection={pasteDialog.selection} initialText={pasteDialog.text} copied={copiedDNA} canCreate={workspace.documents.length < MAX_OPEN_DOCUMENTS} onClose={() => setPasteDialog(null)} onApply={applyPaste} onCreate={createPastedDocument}/>}
     {dialog && entry && <EditDialog key={`${dialog.key}-${dialog.mode}-${dialog.featureId ?? "new"}`} doc={entry.doc} selection={entry.selection} mode={dialog.mode} featureId={dialog.featureId} onClose={() => setDialog(null)} onApply={applyEdit}/>}
     <RecoveryPanel workspace={workspace} modalOpen={recoveryOpen} onClose={() => setRecoveryOpen(false)} restore={snapshot => {
@@ -448,7 +452,7 @@ export default function App() {
     {documentDialog && <DocumentDialog key={`${documentDialog}-${entry?.key ?? 0}`} mode={documentDialog} entry={entry} onClose={() => setDocumentDialog(null)} onCreate={doc => {
       if (workspaceRef.current.documents.length >= MAX_OPEN_DOCUMENTS) { notifyError('Maximum 16 open documents.'); return; }
       dispatch({ type: 'open', documents: [doc], source: 'Created locally', dirty: true }); setDocumentDialog(null); setMessage(null); setPendingExport(null);
-    }} onApply={result => { if (!entry) return; dispatch({ type: 'commit', key: entry.key, doc: result.doc, selection: result.selection }); setDocumentDialog(null); setPendingExport(null); setMessage({ text: 'Changes applied. Undo is available; export to keep your work.', error: false }); }}/>}
+    }} onApply={result => { if (!entry) return; dispatch({ type: 'commit', key: entry.key, doc: result.doc, selection: result.selection }); setDocumentDialog(null); setPendingExport(null); setMessage({ text: 'Changes applied.', error: false }); }}/>}
     {message && <div className={`notification ${message.error ? 'error' : ''}`} role={message.error ? 'alert' : 'status'}><Icon name={message.error ? 'warning' : 'info'}/><div className="notification-content"><p>{message.text}</p>{pendingExport && !message.error && <button className="small-button" onClick={() => { dispatch({ type: 'checkpoint', ...pendingExport }); setPendingExport(null); setMessage(null); }}>Confirm file received</button>}</div><button className="icon-button" aria-label="Close message" onClick={() => setMessage(null)}><Icon name="close"/></button></div>}
     {draftCloseEntry && <PcrDraftDialog name={draftCloseEntry.doc.name}
       validationError={pcrDraftError(pcrInputs[draftCloseEntry.key] ?? EMPTY_PCR)}
@@ -458,9 +462,9 @@ export default function App() {
         dispatch({type:'commit',key:draftCloseEntry.key,doc:result.doc,selection:draftCloseEntry.selection});
         setPcrInputs(old => ({...old,[draftCloseEntry.key]:recipeOptions(result.doc) ?? EMPTY_PCR}));
         setDraftCloseKey(null);setPendingExport(null);
-        setMessage({text:'PCR setup stored in the document. The tab remains open: save or export the native document to keep it. '+result.warnings.join(' '),error:false});
+        setMessage({text:'PCR setup stored. Save the document to keep it. '+result.warnings.join(' '),error:false});
       }}/>}
-    {nativeBusy&&<div className="modal-overlay native-busy"><div role="dialog" aria-modal="true" className="edit-dialog"><div className="dialog-body"><p>Complete or cancel the native file dialog. Do not close the application during a write.</p></div></div></div>}
+    {nativeBusy&&<div className="modal-overlay native-busy"><div role="dialog" aria-modal="true" className="edit-dialog"><div className="dialog-body"><p>File operation in progress. Complete the system dialog.</p></div></div></div>}
     {quitOpen&&<NativeQuitDialog count={workspace.documents.filter(needsExport).length} draftNames={draftEntries.map(d => d.doc.name)} onReviewDraft={() => {
       const first = draftEntries[0]; if (!first) return;
       dispatch({type:'activate',key:first.key}); setQuitOpen(false);

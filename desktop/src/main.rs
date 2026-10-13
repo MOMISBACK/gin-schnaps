@@ -111,7 +111,7 @@ fn desktop_close(app:tauri::AppHandle,state:tauri::State<'_,Host>)->Result<()>{
 #[tauri::command]
 fn desktop_info(state:tauri::State<'_,Host>)->Result<Value>{
     let files=state.files.lock().map_err(|_|"File service unavailable")?;
-    Ok(json!({"version":"0.8.3","dataDirectory":files.data_dir.to_string_lossy(),"signing":"Development preview; not Developer-ID notarized","scientificEngine":"TypeScript"}))
+    Ok(json!({"version":"0.8.4","dataDirectory":files.data_dir.to_string_lossy(),"signing":"Development preview; not Developer-ID notarized","scientificEngine":"TypeScript"}))
 }
 #[tauri::command]
 fn probe_report(app:tauri::AppHandle,state:tauri::State<'_,Host>,report:Value)->Result<()>{

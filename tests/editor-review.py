@@ -81,7 +81,7 @@ with sync_playwright() as p:
         passed('Switching coordinate controls preserves current values and strand; cancellation leaves the document unchanged')
 
         tab('Primers')
-        page.locator('.primer-library summary').click()
+        page.locator('.primer-library > summary').click()
         button('Add oligo').click()
         page.get_by_label('Oligo name', exact=True).fill('Dialog isolation')
         page.get_by_label('Oligo sequence', exact=True).fill('ACGTACGT')

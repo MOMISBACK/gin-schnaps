@@ -8,9 +8,9 @@ export function NativeQuitDialog({count,draftNames,onReviewDraft,onCancel,onDisc
       if(e.key==='Tab'){const f=Array.from(box.current!.querySelectorAll<HTMLElement>('button:not(:disabled)'));if(!f.length){e.preventDefault();return;}if(e.shiftKey&&document.activeElement===f[0]){e.preventDefault();f[f.length-1].focus();}else if(!e.shiftKey&&document.activeElement===f[f.length-1]){e.preventDefault();f[0].focus();}}
       if((e.metaKey||e.ctrlKey)&&['s','o','n','z','q'].includes(e.key.toLowerCase())){e.preventDefault();e.stopPropagation();}}}>
       <header className="dialog-heading"><h2 id="native-quit-title">Close Gin Schnaps?</h2></header>
-      <div className="dialog-body"><p>{count} document(s) have changes not yet saved or acknowledged as exported.</p>
-      <p>Save all writes native .sg.json files. Cancelling any save keeps the application open. Unsaved PCR form entries are session-only: save the PCR setup first.</p>
-      {!!draftNames.length && <p className="analysis-warning">Unsaved PCR drafts: {draftNames.join(' · ')}. Save all and quit cannot preserve uncommitted forms. Review and save their PCR setups first, or explicitly discard all changes.</p>}
+      <div className="dialog-body"><p>{count} unsaved document(s).</p>
+
+      {!!draftNames.length && <p className="analysis-warning">Unsaved PCR drafts: {draftNames.join(' · ')}. Save their PCR setups first, or discard them explicitly.</p>}
       {error&&<p role="alert" className="validation-error">{error}</p>}{busy&&<p role="status">Complete the native file dialog to continue.</p>}</div>
       <footer className="dialog-footer"><button disabled={busy} onClick={onCancel}>Keep working</button><button disabled={busy} onClick={()=>void act(onDiscard)}>Discard changes and quit</button>{!!draftNames.length && <button disabled={busy} onClick={onReviewDraft}>Review PCR draft</button>}<button disabled={busy || !!draftNames.length} className="primary-button" onClick={()=>void act(onSave)}>Save all and quit</button></footer>
     </div></div>;

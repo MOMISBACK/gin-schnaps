@@ -92,7 +92,7 @@ with sync_playwright() as p:
         expect(page.get_by_role('button',name='Download GenBank',exact=True)).to_be_disabled()
         expect(page.get_by_role('dialog')).to_contain_text('archived qualifiers')
         page.screenshot(path=str(OUT/'genbank-export-step4.png'))
-        page.get_by_role('checkbox',name='I understand the limitations; I will also keep the native file.',exact=True).check()
+        page.get_by_role('checkbox',name='Export with these limitations (.sg.json retains all data).',exact=True).check()
         with page.expect_download() as result: page.get_by_role('button',name='Download GenBank',exact=True).click()
         exported=Path(result.value.path()).read_bytes(); (OUT/'current-export.gb').write_bytes(exported)
         (OUT/'current-export-native.json').write_text(json.dumps(modified))

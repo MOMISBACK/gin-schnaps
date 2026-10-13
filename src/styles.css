@@ -67,3 +67,14 @@
 .paste-actions{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin:8px 0}.paste-actions button{font-size:11px}.paste-dialog .form-columns>button{align-self:end}.paste-dialog .edit-preview{overflow-wrap:anywhere}
 
 .paste-dialog .analysis-check{display:flex;align-items:center;gap:6px;margin:8px 0}.paste-dialog .analysis-check input{margin:0;height:auto}
+
+
+/* Expert interface: method notes are optional; input-specific warnings stay visible. */
+.context-help{margin:8px 0;font-size:11.5px;color:var(--muted)}
+.context-help>summary{cursor:pointer;display:list-item;padding:3px 0;max-width:max-content}
+.context-help>summary:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.context-help>div{padding:6px 0 4px 14px;max-width:76ch;line-height:1.5}
+.context-help p+p{margin-top:6px}
+.help-dialog{max-width:600px}
+.help-dialog .context-help{margin:12px 0}
+.edit-preview>h3{margin-bottom:6px}

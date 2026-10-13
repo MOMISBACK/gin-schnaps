@@ -41,7 +41,7 @@ with sync_playwright() as p:
         choose(10,3)
         copied=source['sequence'][9:]+source['sequence'][:3]
         page.keyboard.press(modifier+'+c')
-        expect(page.locator('.notification')).to_contain_text('bases copied')
+        expect(page.locator('.notification')).to_contain_text('bp copied')
         dismiss()
         page.get_by_role('tab',name='Target',exact=True).click();choose(5,8)
         page.keyboard.press(modifier+'+v')
@@ -99,7 +99,7 @@ with sync_playwright() as p:
         expect(page.get_by_label('Selection start',exact=True)).to_have_value('1')
         expect(page.get_by_label('Selection end',exact=True)).to_have_value('4')
         expect(page.get_by_test_id('selection-status')).to_contain_text('4 bp')
-        page.keyboard.press(modifier+'+Shift+c');expect(page.locator('.notification')).to_contain_text('4 bases copied as reverse complement');dismiss()
+        page.keyboard.press(modifier+'+Shift+c');expect(page.locator('.notification')).to_contain_text('4 bp copied (reverse complement)');dismiss()
         page.get_by_role('tab',name='Target',exact=True).click();button('Paste DNA (⌘/Ctrl V)').click()
         expect(page.get_by_label('DNA to paste',exact=True)).to_have_value('')
         page.get_by_label('DNA to paste',exact=True).press(modifier+'+v');expect(page.get_by_label('DNA to paste',exact=True)).to_have_value('GGTT')

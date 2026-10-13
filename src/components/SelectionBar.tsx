@@ -19,6 +19,6 @@ export function SelectionBar({ doc, selection, onSelect, onError }: {
     <button type="submit">Select</button>
     <button type="button" onClick={() => onSelect({ start: 0, length: doc.sequence.length })}>All</button>
     <button type="button" disabled={!selection} onClick={() => onSelect(null)}>Clear</button>
-    <span className="coordinate-hint">1-based inclusive coordinates</span>
+
   </form>;
 }

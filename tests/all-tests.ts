@@ -18,3 +18,5 @@ import './native-checkpoints.test';
 import './reliability.test';
 
 import './sequence-paste.test';
+
+import './message-policy.test';
