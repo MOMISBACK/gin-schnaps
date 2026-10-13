@@ -77,6 +77,8 @@ jobs:
         run: python3 scripts/verify-public-release.py MOMISBACK/gin-schnaps 0.8.1 7827c92a26ba60120181010377a332c0bdabbcf4
       - name: Real cross-document copy and paste
         run: npm run test:clipboard
+      - name: Expert interface, contextual help and preserved warnings
+        run: npm run test:expert-ui
       - name: Emitted-source dependency inventory
         run: npm run security:inventory
       - name: Known-advisory gate (not a security certification)
