@@ -16,3 +16,5 @@ import './editor-review.test';
 import './native-checkpoints.test';
 
 import './reliability.test';
+
+import './sequence-paste.test';

@@ -36,6 +36,7 @@ native compatibility with every older macOS version has not been established.
 ## What it does
 
 - Circular/linear maps, proportional sequence tracks, annotations and shared selections.
+- Cross-document base-sequence copy/paste with preview, insertion/replacement and undo.
 - Guarded sequence/annotation editing, undo/redo, motif search, extraction,
   reverse complement, origin changes, and SVG/PNG map export.
 - FASTA, a documented GenBank subset, partial `.dna` import, and `.sg.json` documents.

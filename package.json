@@ -22,7 +22,8 @@
     "test:documents-oracle": "python3 tests/documents-oracle.py",
     "test:branding": "node --test tests/branding.test.mjs",
     "test:reliability": "python3 tests/reliability.py",
-    "test:release": "python3 tests/release-integrity.py"
+    "test:release": "python3 tests/release-integrity.py",
+    "test:clipboard": "python3 tests/clipboard.py"
   },
   "engines": {
     "node": ">=20"

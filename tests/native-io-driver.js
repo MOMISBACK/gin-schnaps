@@ -53,6 +53,13 @@
     if(a.schemaVersion!==5||a.sequence.length!==4800)throw new Error('Wrong initial saved document');
     if(!document.querySelector('.native-file-bar').textContent.includes('first.sg.json'))throw new Error('Missing saved path');
     mark('Native Save As writes and rereads the full schema-5 document');
+    await click('Paste DNA (⌘/Ctrl V)');await input('DNA to paste','ACGT');await click('Apply paste');dismiss();
+    await click('Save');await settled();dismiss();
+    const pasted=JSON.parse(await control('read-first'));
+    if(pasted.sequence!=='ACGT'+a.sequence)throw new Error('Native paste did not save the exact inserted bases');
+    await click('Undo (⌘/Ctrl Z)');await click('Save');await settled();dismiss();
+    if(await control('read-first')!==first)throw new Error('Undo paste did not restore the exact saved document');
+    mark('Native Paste dialog uses the edit engine; Save writes pasted bases and Undo restores the exact prior file (not an OS clipboard test)');
     await click('Primers');await input('Primer name 1','Native unsaved draft');
     await control('close-request');await wait(()=>button('Keep working'),'draft quit guard');
     if(!button('Save all and quit').disabled)throw new Error('Save all allowed losing an unsaved PCR draft');

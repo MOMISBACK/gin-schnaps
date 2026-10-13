@@ -1,7 +1,15 @@
 # Changelog
 
-## 0.8.2 — corrective patch (unreleased)
+## 0.8.2 — corrective patch and sequence clipboard (unreleased)
 
+- Add Copy/Paste between open documents using keyboard shortcuts, native-menu event
+  paths or an explicit Paste dialog. Insert, replace, append or create a document;
+  optional reverse complement, single-record FASTA validation and one-step undo.
+  Base-only transfer does not silently copy annotations. Optional clipboard read
+  refusal has a keyboard/manual fallback; no background polling or clipboard storage.
+
+- Fix a selection-field synchronization race after switching document tabs; rapid
+  coordinate entry no longer restores an older start position.
 - Fix the 501st-operation editing blockade. A rolling journal retains at most
   500 recent descriptions, with an approximately 512 kB UTF-8 budget on append.
   The omitted-event count is visible and persistent; scientific data are not
