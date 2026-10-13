@@ -1,0 +1,33 @@
+name: Record reviewed file-reliability source
+on:
+  push:
+    branches: [fix/0.8.2-reliability]
+    paths: ['.step2-transfer/**', '.github/workflows/record-step2.yml']
+permissions:
+  contents: read
+jobs:
+  record:
+    if: "startsWith(github.event.head_commit.message, 'chore: transfer reviewed native')"
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          ref: fix/0.8.2-reliability
+      - name: Record the exact source patch without running application code
+        env:
+          EXPECTED_HEAD: ${{ github.sha }}
+        run: |
+          test "$(git rev-parse HEAD)" = "$EXPECTED_HEAD"
+          echo '1f2f4f82c18e16ca55fd6176fdfc2308d3a8a5c7f75cbba21985af757d60c577  .step2-transfer/source.patch.xz' | sha256sum -c -
+          python3 -c "import lzma,pathlib; pathlib.Path('/tmp/gin-native.patch').write_bytes(lzma.decompress(pathlib.Path('.step2-transfer/source.patch.xz').read_bytes()))"
+          git apply --index --unidiff-zero /tmp/gin-native.patch
+          git rm -r .step2-transfer .github/workflows/record-step2.yml
+          test "$(git write-tree)" = 'c33ad06b01dc8293c0556544ea6ad915929ba1d8'
+          git restore --source=HEAD --staged --worktree .github/workflows/record-step2.yml .github/workflows/ci.yml
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git commit -m 'fix: stage reviewed 0.8.3 clipboard and native save resilience'
+          git push origin HEAD:fix/0.8.2-reliability
