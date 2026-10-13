@@ -14,3 +14,5 @@ import './documents-primers.test';
 import './editor-review.test';
 
 import './native-checkpoints.test';
+
+import './reliability.test';

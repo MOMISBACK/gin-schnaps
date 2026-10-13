@@ -104,7 +104,7 @@ pub fn check_document(bytes: &[u8]) -> Result<()> {
     if bytes.len() > DOCUMENT_LIMIT { return Err("Native documents are limited to 4 MB".into()); }
     let v: Value = serde_json::from_slice(bytes).map_err(|_| "Invalid document JSON")?;
     let seq = v["sequence"].as_str().ok_or("DNA sequence missing")?;
-    if v["schemaVersion"].as_u64() != Some(4) || seq.is_empty() || seq.len() > 100_000
+    if v["schemaVersion"].as_u64() != Some(5) || seq.is_empty() || seq.len() > 100_000
         || !seq.bytes().all(|b| b"ACGTRYSWKMBDHVN".contains(&b))
         || !matches!(v["topology"].as_str(), Some("linear" | "circular"))
         || v["features"].as_array().is_none_or(|f| f.len() > 1000)
@@ -211,7 +211,7 @@ impl FileStore {
 mod tests {
     use super::*;
     fn dir() -> PathBuf { let p=std::env::temp_dir().join(format!("gin-schnaps-unit-{}",Uuid::new_v4()));fs::create_dir(&p).unwrap();p }
-    fn doc(s:&str)->String{json!({"schemaVersion":4,"name":"Test","sequence":s,"topology":"linear","features":[],"primers":[]}).to_string()}
+    fn doc(s:&str)->String{json!({"schemaVersion":5,"name":"Test","sequence":s,"topology":"linear","features":[],"primers":[]}).to_string()}
     #[test] fn write_read_and_backup_are_exact() {
         let d=dir();let mut store=FileStore::new(d.join("app")).unwrap();let p=d.join("test.sg.json");
         let a=doc("ACGT");let b=doc("ACGTA");

@@ -46,7 +46,7 @@ with sync_playwright() as p:
         expect(page.get_by_role('tab',name='synthetic-step4',exact=True)).to_be_visible()
         expect(page.locator('.notification')).to_contain_text('Partial'); page.keyboard.press('Escape')
         document = native()
-        assert document['schemaVersion']==4 and document['sequence']==json.loads((ROOT/'tests/fixtures/synthetic-step4-expected.json').read_text())['sequence']
+        assert document['schemaVersion']==5 and document['sequence']==json.loads((ROOT/'tests/fixtures/synthetic-step4-expected.json').read_text())['sequence']
         assert document['features'][0]['segments']==[{'start':339,'end':360},{'start':0,'end':20}]
         assert document['features'][0]['strand']==-1
         assert document['features'][1]['segments']==[{'start':14,'end':15}]

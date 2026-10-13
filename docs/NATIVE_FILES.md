@@ -1,6 +1,6 @@
 # Native files, recovery and safety boundaries
 
-Version 0.8.1 retains the standalone English HTML and TypeScript scientific engine.
+Version 0.8.2 retains the standalone English HTML and TypeScript scientific engine.
 The Rust/Tauri host now offers native Open, Save, Save As and export dialogs.
 It is a development preview, not a signed/notarized laboratory release.
 
@@ -48,7 +48,7 @@ computed results, file grants and session undo are never serialized.
 ## Closing
 
 Native close/quit is prevented until the frontend explicitly acknowledges it.
-The dialog offers Keep working, Discard and quit, or Save all and quit. Cancelling
+The dialog offers Keep working, Discard and quit, or Save all and quit (disabled while PCR drafts remain). Cancelling
 a save or encountering a conflict keeps the app open. Closing always asks, since
 session-only PCR fields can exist without a document dirty flag. Forced OS
 termination and process crashes cannot be intercepted reliably.
@@ -81,3 +81,7 @@ rendering/worker diagnostic before upload. Read the current CI reports to see
 which environments passed; workflow configuration alone is not a test result.
 
 Interchange paths opened during a session remain protected from generic exports even after their transient native token is released. Export to a distinct path. Native .app bundles include license texts inside Contents/Resources so they remain available after copying out of the disk image.
+
+The 0.8.2 native writer accepts the current schema-5 envelope after frontend
+validation. Older input schemas migrate before saving. The scientific engine is
+unchanged; journal retention and draft guards are document/UI changes.

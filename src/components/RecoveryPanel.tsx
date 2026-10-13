@@ -5,7 +5,7 @@ import { encodeRecovery, type RecoverySnapshot } from '../storage/recovery';
 import type { Workspace } from '../domain/workspace';
 
 export function RecoveryPanel({ workspace, restore, modalOpen, onClose }: {
-  workspace: Workspace; restore: (snapshot: RecoverySnapshot) => void; modalOpen: boolean; onClose: () => void;
+  workspace: Workspace; restore: (snapshot: RecoverySnapshot) => boolean; modalOpen: boolean; onClose: () => void;
 }) {
   const [enabled, setEnabled] = useState(false), [ready, setReady] = useState(false), [error, setError] = useState('');
   const [pending, setPending] = useState<RecoverySnapshot | null>(null), [fallback, setFallback] = useState(false), [savedAt, setSavedAt] = useState('');
@@ -65,7 +65,7 @@ export function RecoveryPanel({ workspace, restore, modalOpen, onClose }: {
         {!ready && <p>Checking storage…</p>}{error && <p role="alert" className="validation-error">{error}</p>}
         {pending ? <section className="edit-preview"><h3>{pending.documents.length} recoverable document(s)</h3><p>{new Date(pending.savedAt).toLocaleString("en-US")}</p>
           <p>{pending.documents.map(d => d.doc.name).join(' · ')}</p>{fallback && <p className="preview-warning">Latest copy is invalid: the previous validated copy is offered.</p>}
-          <button onClick={() => { if (workspace.documents.some(d => d.doc !== d.exportedDoc) && !window.confirm("Replace open documents with the recovered session? Export your current changes first.")) return; restore(pending); setPending(null); stopped.current = false; setEnabled(true); setError(''); }}>Restore session</button>
+          <button onClick={() => { if (workspace.documents.some(d => d.doc !== d.exportedDoc) && !window.confirm("Replace open documents with the recovered session? Export your current changes first.")) return; if (!restore(pending)) return; setPending(null); stopped.current = false; setEnabled(true); setError(''); }}>Restore session</button>
         </section> : <label className="export-accept"><input type="checkbox" disabled={!ready || !store.current || !!error} checked={enabled} onChange={e => {
           if (!e.target.checked) { void clear(); return; }
           stopped.current = false; setEnabled(true);

@@ -1,6 +1,6 @@
 {
   "name": "gin-schnaps",
-  "version": "0.8.1",
+  "version": "0.8.2",
   "private": true,
   "type": "module",
   "license": "GPL-3.0-or-later",
@@ -9,7 +9,7 @@
     "build": "node scripts/build.mjs",
     "typecheck": "tsc --noEmit",
     "test": "node scripts/test.mjs",
-    "check": "npm run test:branding && npm run typecheck && npm test && npm run test:security && npm run build && npm run security:inventory",
+    "check": "npm run test:branding && npm run test:release && npm run typecheck && npm test && npm run test:security && npm run build && npm run security:inventory",
     "start": "node scripts/serve.mjs",
     "test:browser": "python3 tests/browser.py",
     "test:interop": "python3 tests/interoperability.py",
@@ -20,7 +20,9 @@
     "test:workbench": "python3 tests/workbench.py",
     "test:documents": "python3 tests/documents-primers.py && python3 tests/editor-review.py",
     "test:documents-oracle": "python3 tests/documents-oracle.py",
-    "test:branding": "node --test tests/branding.test.mjs"
+    "test:branding": "node --test tests/branding.test.mjs",
+    "test:reliability": "python3 tests/reliability.py",
+    "test:release": "python3 tests/release-integrity.py"
   },
   "engines": {
     "node": ">=20"

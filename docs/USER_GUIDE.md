@@ -90,3 +90,25 @@ the selection and **Shift+C** copies its reverse complement.
 
 Every scientific result remains a computation on the current document, not
 experimental evidence. Review [format limits](FILE_FORMATS.md) before exchanging files.
+
+## Long sessions and journal retention
+
+The operation journal is a bounded convenience history, not a tamper-proof audit trail.
+On each new operation, the latest 500 descriptions are retained, with an approximate
+512 kB UTF-8 budget; older descriptions are counted in History, not claimed complete.
+This does not remove sequence, features, oligos, archived qualifiers or source files.
+Keep earlier native exports when you need the older descriptions. Undo/redo restores
+exact session snapshots under its own memory/count limits. Imported legacy journals
+are kept intact until a new operation applies the stated retention policy.
+
+## PCR drafts are not saved setups
+
+A changed PCR form is independent of the document's saved-file state. Close asks
+before discarding it, even if the native file is saved. Save PCR setup commits valid
+fields to the document and keeps the tab open: then Save or export that document.
+Invalid fields remain editable but cannot become a valid saved setup. Desktop
+Save all and quit is disabled while any PCR draft remains; Review PCR draft returns
+to the form. Library edits preserve a separate manual draft. Loading a stored setup
+or replacing form fields from the library requires consent when a draft exists.
+Browser leave prompts are best-effort; forced termination cannot be intercepted.
+Recovery still contains committed documents, not uncommitted form fields.

@@ -1,5 +1,5 @@
 import React,{useEffect,useRef,useState} from 'react';
-export function NativeQuitDialog({count,onCancel,onDiscard,onSave}:{count:number;onCancel:()=>void;onDiscard:()=>Promise<void>;onSave:()=>Promise<void>}) {
+export function NativeQuitDialog({count,draftNames,onReviewDraft,onCancel,onDiscard,onSave}:{count:number;draftNames:string[];onReviewDraft:()=>void;onCancel:()=>void;onDiscard:()=>Promise<void>;onSave:()=>Promise<void>}) {
   const [busy,setBusy]=useState(false),[error,setError]=useState(''),box=useRef<HTMLDivElement>(null);
   useEffect(()=>{const prior=document.activeElement as HTMLElement;box.current?.querySelector<HTMLElement>('button')?.focus();return()=>{if(prior?.isConnected)prior.focus();};},[]);
   const act=async(operation:()=>Promise<void>)=>{if(busy)return;setBusy(true);setError('');try{await operation();}catch(e){setError((e as Error).message);}finally{setBusy(false);}};
@@ -10,7 +10,8 @@ export function NativeQuitDialog({count,onCancel,onDiscard,onSave}:{count:number
       <header className="dialog-heading"><h2 id="native-quit-title">Close Gin Schnaps?</h2></header>
       <div className="dialog-body"><p>{count} document(s) have changes not yet saved or acknowledged as exported.</p>
       <p>Save all writes native .sg.json files. Cancelling any save keeps the application open. Unsaved PCR form entries are session-only: save the PCR setup first.</p>
+      {!!draftNames.length && <p className="analysis-warning">Unsaved PCR drafts: {draftNames.join(' · ')}. Save all and quit cannot preserve uncommitted forms. Review and save their PCR setups first, or explicitly discard all changes.</p>}
       {error&&<p role="alert" className="validation-error">{error}</p>}{busy&&<p role="status">Complete the native file dialog to continue.</p>}</div>
-      <footer className="dialog-footer"><button disabled={busy} onClick={onCancel}>Keep working</button><button disabled={busy} onClick={()=>void act(onDiscard)}>Discard changes and quit</button><button disabled={busy} className="primary-button" onClick={()=>void act(onSave)}>Save all and quit</button></footer>
+      <footer className="dialog-footer"><button disabled={busy} onClick={onCancel}>Keep working</button><button disabled={busy} onClick={()=>void act(onDiscard)}>Discard changes and quit</button>{!!draftNames.length && <button disabled={busy} onClick={onReviewDraft}>Review PCR draft</button>}<button disabled={busy || !!draftNames.length} className="primary-button" onClick={()=>void act(onSave)}>Save all and quit</button></footer>
     </div></div>;
 }

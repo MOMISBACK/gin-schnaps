@@ -35,7 +35,7 @@ test('.dna supports subarray offsets and bounds hostile base64', () => {
 });
 test('native v1/v2 migrate to the current schema without dropping fields; v2 cannot claim a new archive format', () => {
   const current = createDemo();
-  const { primers: _p, pcrRecipe: _r, ...legacy } = current;
+  const { primers: _p, pcrRecipe: _r, historyOmitted: _h, ...legacy } = current;
   const v2 = { ...legacy, schemaVersion: 2 };
   assert.deepEqual(validateDocument(v2), current);
   assert.deepEqual(validateDocument(JSON.parse(serializeDocument(current))), current);

@@ -1,3 +1,4 @@
+import { MAX_HISTORY_EVENTS } from './history';
 import { parseLocation, validateExactSegments, continuousSegments, type UnresolvedLocation } from './locations';
 import { validateOligos, validateRecipe, type Oligo, type PcrRecipe } from './primers';
 import { base64ToBytes, readDnaPackets } from "../formats/dna-packets";
@@ -17,10 +18,10 @@ export type Feature = {
   qualifiers: Qualifier[]; archivedQualifiers: ArchivedQualifier[]; reviewRequired: boolean;
 };
 export type SequenceDocument = {
-  schemaVersion: 4; id: string; name: string; description: string;
+  schemaVersion: 5; id: string; name: string; description: string;
   sequence: string; topology: 'circular' | 'linear'; features: Feature[];
   provenance: 'synthetic-demo' | 'local-file';
-  sourceArchive: SourceArchive | null; history: AuditEvent[]; primers: Oligo[]; pcrRecipe: PcrRecipe | null;
+  sourceArchive: SourceArchive | null; history: AuditEvent[]; historyOmitted: number; primers: Oligo[]; pcrRecipe: PcrRecipe | null;
 };
 export const MAX_BASES = 100_000;
 export const MAX_FEATURES = 1_000;
@@ -82,8 +83,8 @@ function text(value: unknown, label: string, max = 500, empty = false): string {
 }
 export function validateDocument(input: unknown): SequenceDocument {
   const value = object(input);
-  exactKeys(value, ['schemaVersion', 'id', 'name', 'description', 'sequence', 'topology', 'features', 'provenance', ...(value.schemaVersion === 2 || value.schemaVersion === 3 || value.schemaVersion === 4 ? ['sourceArchive', 'history', ...(value.schemaVersion === 4 ? ['primers','pcrRecipe'] : [])] : [])]);
-  if (value.schemaVersion !== 1 && value.schemaVersion !== 2 && value.schemaVersion !== 3 && value.schemaVersion !== 4) throw new Error("Unsupported Gin Schnaps format version.");
+  exactKeys(value, ['schemaVersion', 'id', 'name', 'description', 'sequence', 'topology', 'features', 'provenance', ...(value.schemaVersion === 2 || value.schemaVersion === 3 || value.schemaVersion === 4 || value.schemaVersion === 5 ? ['sourceArchive', 'history', ...([4, 5].includes(Number(value.schemaVersion)) ? ['primers','pcrRecipe'] : []), ...(value.schemaVersion === 5 ? ['historyOmitted'] : [])] : [])]);
+  if (value.schemaVersion !== 1 && value.schemaVersion !== 2 && value.schemaVersion !== 3 && value.schemaVersion !== 4 && value.schemaVersion !== 5) throw new Error("Unsupported Gin Schnaps format version.");
   const sequence = text(value.sequence, "Sequence", MAX_BASES);
   if (!IUPAC.test(sequence)) throw new Error("The sequence must contain only uppercase IUPAC DNA bases.");
   if (value.topology !== 'circular' && value.topology !== 'linear') throw new Error("Invalid topology.");
@@ -92,7 +93,7 @@ export function validateDocument(input: unknown): SequenceDocument {
   const ids = new Set<string>();
   const features: Feature[] = value.features.map((raw: unknown) => {
     const feature = object(raw);
-    exactKeys(feature, ['id', 'name', 'type', 'strand', 'color', 'segments', ...(value.schemaVersion === 2 || value.schemaVersion === 3 || value.schemaVersion === 4 ? ['qualifiers', 'archivedQualifiers', 'reviewRequired', ...(value.schemaVersion === 4 ? ['unresolved'] : [])] : [])]);
+    exactKeys(feature, ['id', 'name', 'type', 'strand', 'color', 'segments', ...(value.schemaVersion === 2 || value.schemaVersion === 3 || value.schemaVersion === 4 || value.schemaVersion === 5 ? ['qualifiers', 'archivedQualifiers', 'reviewRequired', ...([4, 5].includes(Number(value.schemaVersion)) ? ['unresolved'] : [])] : [])]);
     const id = text(feature.id, "Identifier", 120);
     if (ids.has(id)) throw new Error("Duplicate feature identifier.");
     ids.add(id);
@@ -112,10 +113,10 @@ export function validateDocument(input: unknown): SequenceDocument {
     });
     if (!unresolved) {
       validateExactSegments(segments, sequence.length);
-      if (value.schemaVersion !== 4 && !continuousSegments(segments, sequence.length)) throw new Error('Legacy schema cannot represent discontinuous joins.');
+      if (![4, 5].includes(Number(value.schemaVersion)) && !continuousSegments(segments, sequence.length)) throw new Error('Legacy schema cannot represent discontinuous joins.');
       if (value.topology === 'linear' && segments.length === 2 && segments[0].end === sequence.length && segments[1].start === 0) {
         // Exact disjoint joins remain legal on linear DNA, but not legacy wrapped spans.
-        if (value.schemaVersion !== 4) throw new Error('A linear feature cannot cross the origin.');
+        if (![4, 5].includes(Number(value.schemaVersion))) throw new Error('A linear feature cannot cross the origin.');
       }
     }
     return { id, name: text(feature.name, "Feature name"), type: text(feature.type, 'Type', 80),
@@ -124,13 +125,14 @@ export function validateDocument(input: unknown): SequenceDocument {
       archivedQualifiers: value.schemaVersion === 1 ? [] : validateArchived(feature.archivedQualifiers),
       reviewRequired: value.schemaVersion === 1 ? false : boolean(feature.reviewRequired) };
   });
-  const primers = value.schemaVersion === 4 ? validateOligos(value.primers) : [];
+  const primers = [4, 5].includes(Number(value.schemaVersion)) ? validateOligos(value.primers) : [];
   return {
-    schemaVersion: 4, primers, pcrRecipe: value.schemaVersion === 4 ? validateRecipe(value.pcrRecipe, primers) : null, id: text(value.id, "Document identifier", 120), name: text(value.name, "Name", 200),
+    schemaVersion: 5, primers, pcrRecipe: [4, 5].includes(Number(value.schemaVersion)) ? validateRecipe(value.pcrRecipe, primers) : null, id: text(value.id, "Document identifier", 120), name: text(value.name, "Name", 200),
     description: text(value.description, 'Description', 10000, true), sequence,
     topology: value.topology, provenance: value.provenance, features,
-    sourceArchive: value.schemaVersion === 1 ? null : validateArchive(value.sourceArchive, (value.schemaVersion === 3 || value.schemaVersion === 4)),
-    history: value.schemaVersion === 1 ? [] : validateHistory(value.history)
+    sourceArchive: value.schemaVersion === 1 ? null : validateArchive(value.sourceArchive, (value.schemaVersion === 3 || value.schemaVersion === 4 || value.schemaVersion === 5)),
+    history: value.schemaVersion === 1 ? [] : validateHistory(value.history),
+    historyOmitted: value.schemaVersion === 5 ? validateOmittedCount(value.historyOmitted) : 0
   };
 }
 export function serializeDocument(doc: SequenceDocument): string {
@@ -182,10 +184,15 @@ function validateArchive(input: unknown, allowDnaArchive: boolean): SourceArchiv
   return { format: 'snapgene', filename: text(a.filename, "Source file", 500), base64, superseded: boolean(a.superseded), report };
 }
 function validateHistory(input: unknown): AuditEvent[] {
-  if (!Array.isArray(input) || input.length > 500) throw new Error("Limit of 500 operations per document reached.");
+  if (!Array.isArray(input) || input.length > MAX_HISTORY_EVENTS) throw new Error("Journal exceeds 500 retained entries. This is a file limit, not a lifetime editing limit.");
   return input.map(raw => {
     const e = object(raw); exactKeys(e, ['action', 'summary', 'warnings']);
     if (!Array.isArray(e.warnings) || e.warnings.length > 20) throw new Error("Invalid operation report.");
     return { action: text(e.action, 'Action', 80), summary: text(e.summary, "Summary", 1000), warnings: e.warnings.map(w => text(w, "Warning", 1000)) };
   });
+}
+
+function validateOmittedCount(value: unknown): number {
+  if (typeof value !== 'number' || !Number.isSafeInteger(value) || value < 0 || value > Number.MAX_SAFE_INTEGER - MAX_HISTORY_EVENTS) throw new Error('Invalid omitted-journal count.');
+  return value;
 }

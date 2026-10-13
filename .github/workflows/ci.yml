@@ -65,8 +65,16 @@ jobs:
         run: npm run test:workbench
       - name: Persistent oligos, locations and external interoperability corpus
         run: npm run test:documents
+      - name: Journal capacity and unsaved PCR regressions
+        run: npm run test:reliability
       - name: Independent compound-location and oligo oracle
         run: npm run test:documents-oracle
+      - name: Verify the existing public download independently (Linux only)
+        if: runner.os == 'Linux'
+        env:
+          GH_TOKEN: ''
+          GITHUB_TOKEN: ''
+        run: python3 scripts/verify-public-release.py MOMISBACK/gin-schnaps 0.8.1 7827c92a26ba60120181010377a332c0bdabbcf4
       - name: Emitted-source dependency inventory
         run: npm run security:inventory
       - name: Known-advisory gate (not a security certification)
@@ -177,7 +185,6 @@ jobs:
             native-packages/CHECKSUMS.json
             native-packages/NATIVE_THIRD_PARTY_NOTICES.md
           retention-days: 14
-
   rust-audit:
     runs-on: ubuntu-latest
     timeout-minutes: 15
@@ -206,3 +213,16 @@ jobs:
           name: native-advisory-report
           path: test-results/rust-audit.json
           retention-days: 14
+  required:
+    name: Required checks
+    if: always()
+    needs: [web, native, rust-audit]
+    runs-on: ubuntu-latest
+    permissions: {}
+    steps:
+      - name: Require every matrix and audit job
+        env:
+          WEB: ${{ needs.web.result }}
+          NATIVE: ${{ needs.native.result }}
+          AUDIT: ${{ needs.rust-audit.result }}
+        run: test "$WEB" = success && test "$NATIVE" = success && test "$AUDIT" = success

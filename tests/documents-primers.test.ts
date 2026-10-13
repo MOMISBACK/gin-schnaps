@@ -110,10 +110,10 @@ test('GenBank exact joins and read-only descriptors round trip without dropping 
 });
 test('schema migrations v1 through v3 add empty library without reinterpreting user text',()=>{
   const d=doc();d.description='Données françaises';
-  const {primers:_p,pcrRecipe:_r,...v3}=d;
+  const {primers:_p,pcrRecipe:_r,historyOmitted:_o,...v3}=d;
   for(const schemaVersion of [2,3])assert.deepEqual(validateDocument({...v3,schemaVersion}),d);
   const {sourceArchive:_a,history:_h,...v1}=v3;
-  const migrated=validateDocument({...v1,schemaVersion:1});assert.equal(migrated.description,d.description);assert.deepEqual(migrated.primers,[]);assert.equal(migrated.pcrRecipe,null);assert.equal(migrated.schemaVersion,4);
+  const migrated=validateDocument({...v1,schemaVersion:1});assert.equal(migrated.description,d.description);assert.deepEqual(migrated.primers,[]);assert.equal(migrated.pcrRecipe,null);assert.equal(migrated.schemaVersion,5);
   assert.throws(()=>validateDocument({...v3,schemaVersion:3,primers:[oligo]}));
 });
 test('oligo validation admits IUPAC reagent sequences but not malformed or duplicate data',()=>{

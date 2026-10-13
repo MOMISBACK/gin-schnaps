@@ -21,7 +21,7 @@ function range(f: Feature) { return f.segments.map(s => [s.start, s.end]); }
 test('schema-1 files migrate to the current schema without changing sequence, coordinates or topology', () => {
   const old = { schemaVersion: 1, id: 'old', name: 'old', description: '', sequence: 'ACGT', topology: 'linear', features: [], provenance: 'local-file' };
   const migrated = validateDocument(old);
-  assert.equal(migrated.schemaVersion, 4);
+  assert.equal(migrated.schemaVersion, 5);
   assert.deepEqual(migrated.history, []);
   assert.equal(migrated.sourceArchive, null);
   assert.equal(migrated.sequence, old.sequence);

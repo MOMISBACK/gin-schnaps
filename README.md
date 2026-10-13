@@ -7,9 +7,13 @@ basic translation, restriction and theoretical PCR analyses. The interface is in
 **Version 0.8.1 is a development preview, not a laboratory-validated release.**
 Keep independent backups. Desktop packages are not signed by a trusted publisher.
 
+Source on `main` may be newer than the public preview. Download only an asset from a published release.
+
 ## Download and install
 
-**[Download Gin Schnaps 0.8.1](https://github.com/MOMISBACK/gin-schnaps/releases/tag/v0.8.1)**
+**[Download published Gin Schnaps previews](https://github.com/MOMISBACK/gin-schnaps/releases)**
+
+The table below describes the published 0.8.1 preview. The 0.8.2 corrective changes are documented in [CHANGELOG](CHANGELOG.md); they are not available until their own release is published.
 
 Choose a file from **Assets** on that release page:
 

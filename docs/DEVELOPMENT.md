@@ -79,15 +79,11 @@ a Git checkout and a built dist/. It refuses to package font binaries and does
 not place tests or sources in the end-user browser archive.
 
 CI runs browser checks on three OS families and native checks on Linux, Windows,
-macOS Intel and Apple Silicon. A successful main-branch build triggers a separate
-download publisher, independent of the merge commit message. It publishes a
-**prerelease only after every required platform and audit job passes**, using the
-tested package.json version. Assets include native packages, browser ZIP,
-corresponding-source ZIP, checksums and a provenance manifest. Existing public
-versions remain unchanged; increment the package version for a new release.
-No signing credentials or updater service are configured.
-
-Read-only build jobs do not publish. Only the separate publisher has contents-write
-permission. It accepts same-repository main/push runs, checks required jobs and
-source ancestry, and verifies the exact asset set, source commit, uploaded sizes
-and SHA-256 digests. Functional CI success does not remove native security warnings.
+macOS Intel and Apple Silicon. Successful main builds trigger the separate publisher,
+independently of commit messages. It validates all required jobs, source ancestry,
+tags and uploaded hashes before publishing. Version-number reuse for another source
+fails explicitly; a new release requires a new version. Public downloads are checked
+without authentication by a separate read-only job. Repository-level branch rules
+and release immutability still require maintainer setup: see [MAINTAINER.md](MAINTAINER.md).
+Only the publisher receives contents-write permission. No signing credentials or
+updater service are configured. Tests do not remove native security warnings.

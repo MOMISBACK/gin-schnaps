@@ -24,3 +24,13 @@ not permit ambiguous PCR/Tm calculations. See [user guide](USER_GUIDE.md),
 [development and tests](DEVELOPMENT.md), and the individual block/conversion reports.
 Original files and notes can contain sensitive data; source archives and exported
 reports must not be published unintentionally.
+
+## Native schema 5 (0.8.2)
+
+Schema 5 adds the nonnegative safe-integer `historyOmitted` counter. Readers migrate
+schemas 1–4 with zero omitted descriptions and preserve their complete accepted
+journals. Each new command may compact only journal descriptions, keeping recent
+entries and a cumulative count. Older files are not silently shortened on import.
+Schema 5 exports must not be opened for editing in an older application. The
+scientific document and source archives remain independently preserved. GenBank
+continues to omit internal history and the saved PCR library/setup, as reported.
