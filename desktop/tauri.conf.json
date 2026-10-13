@@ -1,0 +1,22 @@
+{
+  "$schema": "https://schema.tauri.app/config/2",
+  "productName": "Gin Schnaps",
+  "version": "0.8.1",
+  "identifier": "org.ginschnaps.desktop",
+  "build": {
+    "frontendDist": "web"
+  },
+  "app": {
+    "windows": [],
+    "withGlobalTauri": true,
+    "security": {
+      "capabilities": [
+        "desktop"
+      ],
+      "csp": "default-src 'none'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'none'; worker-src blob:; child-src blob:; connect-src ipc: http://ipc.localhost; base-uri 'none'; form-action 'none'; object-src 'none'"
+    }
+  },
+  "bundle": {
+    "active": false
+  }
+}

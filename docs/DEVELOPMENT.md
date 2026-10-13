@@ -1,0 +1,90 @@
+# Developing Gin Schnaps
+
+End users should install a [release](INSTALL.md), not follow these build commands.
+
+## Web build
+
+Use Node.js 22 and npm. From a source checkout:
+
+```sh
+npm ci --ignore-scripts
+npm run check
+npm start
+```
+
+`npm ci` installs the exact locked dependency graph without lifecycle scripts.
+`check` runs type checking, domain tests, dependency/branding checks, the standalone
+build and the emitted-source inventory. `npm start` serves the existing build on
+loopback only. The standalone output is `dist/index.html`; no CDN is used.
+
+For browser and independent-reader tests, use Python 3.12:
+
+```sh
+python3 -m pip install playwright==1.58.0 biopython==1.86
+python3 -m playwright install chromium
+npm run test:browser
+npm run test:interop
+npm run test:file-oracle
+npm run test:consolidation
+npm run test:workbench
+npm run test:documents
+npm run test:documents-oracle
+python3 tests/native-notices-test.py
+```
+
+On Linux, Playwright may also require its documented system dependencies. Default
+tests open the HTML through `file://`. Restricted environments may set
+`GIN_SCHNAPS_TEST_MODE=inline`; that mode does **not** validate persistent browser
+recovery and must never be reported as equivalent. Reports are in test-results/.
+
+## Native build
+
+Rust 1.99.0 and Cargo.lock are pinned. Install the appropriate
+[Tauri platform prerequisites](https://v2.tauri.app/start/prerequisites/) first.
+
+```sh
+npm run build
+node scripts/prepare-desktop.mjs
+cargo +1.99.0 fetch --locked --manifest-path desktop/Cargo.toml
+cargo +1.99.0 test --locked --manifest-path desktop/Cargo.toml
+cargo +1.99.0 build --release --locked --manifest-path desktop/Cargo.toml
+python3 scripts/package-desktop.py
+```
+
+The native binary is desktop/target/release/gin-schnaps (gin-schnaps.exe on Windows).
+The `io-test` feature adds fixed synthetic picker responses for tests only. Never
+distribute that build. Real native tests drive React → IPC → disk → recovery; they
+do not automate the OS file-picker UI. Release binaries are compiled without it.
+Native packages are produced on their matching operating system.
+
+## Layout and scientific boundary
+
+`src/domain` owns documents, validation and edits; `src/core` contains scientific
+computations; `src/adapters` and `src/workers` isolate transports. `src/components`
+contains the interface. `desktop/src` owns bounded file operations, not a second
+biological engine. `tests` includes synthetic fixtures and independently attributed
+public interoperability examples. `vendor` contains a small display-ID adapter and
+reviewed license data, not a second opaque application bundle.
+
+Internal intervals are zero-based, half-open. User coordinates are one-based,
+inclusive. Sequences/annotations must not be mutated by view state. Worker results
+are bound to document revision and parameters. A late native save acknowledgement
+must not mark newer edits as saved. Read [SCIENCE](SCIENCE.md) and
+[FILE_FORMATS](FILE_FORMATS.md) before changing a parser or operation.
+
+## Packaging and releases
+
+`python3 scripts/package.py` creates separate browser and source ZIPs. It requires
+a Git checkout and a built dist/. It refuses to package font binaries and does
+not place tests or sources in the end-user browser archive.
+
+CI runs browser checks on three OS families and native checks on Linux, Windows,
+macOS Intel and Apple Silicon. A main-branch merge whose commit title starts with
+`release:` publishes a **prerelease only after all jobs pass**, using the package.json
+version. Assets include native packages, browser ZIP, corresponding-source ZIP,
+checksums and a provenance manifest. Existing tags/assets are never overwritten.
+No signing credentials or updater service are configured.
+
+Read-only build jobs do not publish. Only the final main-branch publisher has
+contents-write permission; it verifies the asset set and exact source commit.
+Functional CI success does not remove the native security warnings.

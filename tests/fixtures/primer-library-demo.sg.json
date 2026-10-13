@@ -1,0 +1,40 @@
+{
+  "schemaVersion": 4,
+  "id": "step7-primer-demo",
+  "name": "Saved_primer_demo",
+  "description": "Synthetic 40-base template and illustrative oligos. No laboratory validation. Expected exact product: 44 bases including tails.",
+  "sequence": "ATGCGTACACACACACACACACACACACACACTAGCGGTA",
+  "topology": "linear",
+  "features": [],
+  "primers": [
+    {
+      "id": "demo-A",
+      "name": "Demo A",
+      "sequence": "GGATGCGTAC",
+      "notes": "Explicit tail GG, annealing ATGCGTAC",
+      "provenance": "manual"
+    },
+    {
+      "id": "demo-B",
+      "name": "Demo B",
+      "sequence": "CCTACCGCTA",
+      "notes": "Explicit tail CC, annealing TACCGCTA",
+      "provenance": "manual"
+    }
+  ],
+  "pcrRecipe": {
+    "primerIds": [
+      "demo-A",
+      "demo-B"
+    ],
+    "annealingStarts": [
+      2,
+      2
+    ],
+    "minLength": 1,
+    "maxLength": 1000
+  },
+  "provenance": "synthetic-demo",
+  "sourceArchive": null,
+  "history": []
+}

@@ -1,0 +1,8 @@
+# Keep source and textual fixtures identical on every development platform.
+* text=auto eol=lf
+*.dna binary
+*.png binary
+*.jpg binary
+*.zip binary
+
+*.gz binary

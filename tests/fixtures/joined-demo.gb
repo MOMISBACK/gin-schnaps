@@ -1,0 +1,12 @@
+LOCUS       CORPUS20                 120 bp    DNA     circular SYN 13-OCT-2026
+DEFINITION  Synthetic location stress test; no biological validation.
+FEATURES             Location/Qualifiers
+     CDS             complement(join(1..3,7..9,10..12))
+                     /label="circular-04"
+                     /transl_table=11
+                     /note="First note"
+                     /note="Second note"
+ORIGIN
+        1 atggccgaat aacgtcagat ccgatcgagg ccatggctaa gttagcccta aatgcgtacc
+       61 gaatggccga ataacgtcag atccgatcga ggccatggct aagttagccc taaatgcgta
+//

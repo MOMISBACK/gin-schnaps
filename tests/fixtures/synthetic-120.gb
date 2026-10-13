@@ -1,0 +1,24 @@
+LOCUS       Synthetic_120            120 bp    DNA     circular SYN 12-OCT-2026
+DEFINITION  Synthetic test fixture. No experimental construction.
+ACCESSION   TEST_ONLY
+COMMENT     Metadata preserved only in the original archive.
+FEATURES             Location/Qualifiers
+     source          1..120
+                     /organism="synthetic construct"
+     CDS             complement(join(101..120,1..30))
+                     /label="Origin feature"
+                     /gene="illustration"
+                     /note="A quoted ""word"" and
+                     a second line."
+                     /note="Second independent note."
+                     /codon_start=2
+                     /transl_table=11
+                     /translation="MXXX
+                     XXX"
+                     /pseudo
+     misc_feature    41..80
+                     /label="Region B"
+ORIGIN
+        1 acgtacgtac gtacgtacgt acgtacgtac gtacgtacgt acgtacgtac gtacgtacgt
+       61 acgtacgtac gtacgtacgt acgtacgtac gtacgtacgt acgtacgtac gtacgtacgt
+//

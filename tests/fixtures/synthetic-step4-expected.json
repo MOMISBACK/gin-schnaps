@@ -1,0 +1,42 @@
+{
+  "sequence": "CTTCTTCCATACTAAATTTTTCCGATGTGGGTGGCTGCTGCTGCTGCTGCTGCTGCTTAATGAGGCACCTTTCCTTGACACCGGCGTACACTTTGGCCGGGAATTCTGCTGTCGGTATAAACGCACGTTATGGACGGCCGCAACTAACTCTTTGAGCGGCGCAGCCGTAGAAGGTGGTTGGGGGGCTTGCGGTCAGGGCTCGAATGCGAATTTAGGTACAGGATCCACCATGTATGTTACCGTCCAATTTCAACAGGTCGCGCATAGACGGCGTTTGGAGGAGTTCTACGTATGGTAATTACGTCATACTTGGCCCGTATGGTCTCGATCATAATATTTCTTATTCTTCTTCTTCTTCTT",
+  "length": 360,
+  "sha256": "77d34842b061079f4c96552a70b7aeff8e21d1abb45b26b2d326c1e8c6b62cf7",
+  "topology": "circular",
+  "features": [
+    {
+      "name": "Origin reverse",
+      "segments": [
+        [
+          339,
+          360
+        ],
+        [
+          0,
+          20
+        ]
+      ],
+      "strand": -1
+    },
+    {
+      "name": "Single base",
+      "segments": [
+        [
+          14,
+          15
+        ]
+      ],
+      "strand": 1
+    },
+    {
+      "name": "Unoriented",
+      "segments": [
+        [
+          99,
+          120
+        ]
+      ],
+      "strand": 0
+    }
+  ]
+}
