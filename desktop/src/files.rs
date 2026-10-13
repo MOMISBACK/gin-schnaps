@@ -19,6 +19,9 @@ pub fn checked_path(path: &Path) -> Result<PathBuf> {
     let parent = path.parent().ok_or("A file parent is required")?.canonicalize().map_err(io)?;
     let name = path.file_name().ok_or("A file name is required")?;
     let target = parent.join(name);
+    if target.to_str().is_none() {
+        return Err("File paths must contain valid Unicode. Choose another file name or folder.".into());
+    }
     match fs::symlink_metadata(&target) {
         Ok(m) if m.file_type().is_symlink() || !m.is_file() => return Err("Symlinks and non-regular files are not supported. Choose the real file.".into()),
         Err(e) if e.kind() == std::io::ErrorKind::NotFound => {},
@@ -59,44 +62,80 @@ pub fn lock_path(path: &Path) -> Result<File> {
 struct Pending(PathBuf);
 impl Drop for Pending { fn drop(&mut self) { let _ = fs::remove_file(&self.0); } }
 
-/// Same-directory replacement after a fully written and synced temporary file.
-/// Hash checks detect ordinary external modifications; advisory locks coordinate
-/// Gin Schnaps processes. This is not a CAS against arbitrary noncooperating
-/// programs and cannot promise durability on every filesystem/power failure.
-pub fn replace(path: &Path, bytes: &[u8], expected: Option<&str>, limit: usize) -> Result<Vec<String>> {
-    replace_checked(path, bytes, expected, limit, || Ok(()))
+/// Keep the historical lock path for ordinary names so adjacent versions still
+/// coordinate. A legal long file name must not become illegal after adding a
+/// lock suffix; use a fixed-size digest only for that otherwise-unsavable case.
+fn sibling_lock(path: &Path, suffix: &str) -> PathBuf {
+    let mut name = std::ffi::OsString::from(".");
+    name.push(path.file_name().unwrap());
+    name.push(suffix);
+    if name.as_encoded_bytes().len() <= 255 {
+        path.with_file_name(name)
+    } else {
+        path.with_file_name(format!(".gin-schnaps-{}{}", hash(path.file_name().unwrap().as_encoded_bytes()), suffix))
+    }
 }
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+enum WriteStage { Created, PartiallyWritten, Written, Synced, BeforePublish, Published, BeforeVerify }
+
+/// Fully prepare and sync a sibling temporary file before publication. The
+/// observer is internal, not an IPC command, environment switch or user option.
+/// Production always supplies a no-op; unit tests inject failures at boundaries.
+/// Advisory locks are not a compare-and-swap against noncooperating writers.
+pub fn replace(path: &Path, bytes: &[u8], expected: Option<&str>, limit: usize) -> Result<Vec<String>> {
+    replace_observed(path, bytes, expected, limit, |_| Ok(()))
+}
+#[cfg(test)]
 fn replace_checked(path: &Path, bytes: &[u8], expected: Option<&str>, limit: usize, before_commit: impl FnOnce() -> Result<()>) -> Result<Vec<String>> {
+    let mut hook = Some(before_commit);
+    replace_observed(path, bytes, expected, limit, |stage| {
+        if stage == WriteStage::BeforePublish { hook.take().unwrap()()?; }
+        Ok(())
+    })
+}
+fn replace_observed(path: &Path, bytes: &[u8], expected: Option<&str>, limit: usize, mut observe: impl FnMut(WriteStage) -> Result<()>) -> Result<Vec<String>> {
     if bytes.len() > limit { return Err("Output exceeds the supported size limit".into()); }
     let path = checked_path(path)?;
     if expected.is_some() && fs::metadata(&path).map_err(io)?.permissions().readonly() {
         return Err("Destination is read-only. Save a separate copy instead.".into());
     }
-    let name = path.file_name().unwrap().to_string_lossy();
-    let _lock = lock_path(&path.with_file_name(format!(".{name}.gin-schnaps.lock")))?;
+    let _lock = lock_path(&sibling_lock(&path, ".gin-schnaps.lock"))?;
     if snapshot(&path, limit)?.as_deref() != expected { return Err("File conflict: the destination changed or disappeared. Use Save As with a different name, or reopen and compare.".into()); }
     let temp = Pending(path.with_file_name(format!(".gin-schnaps-{}.tmp", Uuid::new_v4())));
     let mut file = private_file(&temp.0, true)?;
-    file.write_all(bytes).map_err(io)?;
+    observe(WriteStage::Created)?;
+    let middle = bytes.len() / 2;
+    file.write_all(&bytes[..middle]).map_err(io)?;
+    observe(WriteStage::PartiallyWritten)?;
+    file.write_all(&bytes[middle..]).map_err(io)?;
+    observe(WriteStage::Written)?;
     file.sync_all().map_err(io)?;
     drop(file);
-    before_commit()?;
-    // Check again after the potentially slow write, before replacement.
+    observe(WriteStage::Synced)?;
+    observe(WriteStage::BeforePublish)?;
     if snapshot(&path, limit)?.as_deref() != expected { return Err("File conflict during writing. The existing destination was not replaced.".into()); }
+    if expected.is_some() && fs::metadata(&path).map_err(io)?.permissions().readonly() {
+        return Err("Destination became read-only while saving. The existing file was not replaced.".into());
+    }
     if expected.is_some() {
         fs::rename(&temp.0, &path).map_err(io)?;
     } else {
-        // No-clobber publication: fails if another process created the target.
-        // Same-directory hard link; temporary link is cleaned by Pending's Drop.
         fs::hard_link(&temp.0, &path).map_err(io)?;
     }
+    // From here onward, an error must not pretend that the old destination is
+    // untouched. FileStore retains its old grant until verification succeeds.
+    let after_publish = |error: String| format!("The destination was replaced, but save confirmation failed: {error}. Keep the open document and use Save As with a different name; a native predecessor backup may be available.");
+    observe(WriteStage::Published).map_err(after_publish)?;
     let mut warnings = Vec::new();
     #[cfg(unix)]
     if File::open(path.parent().unwrap()).and_then(|f| f.sync_all()).is_err() {
         warnings.push("The file was written, but directory durability could not be confirmed.".into());
     }
-    if hash(&read_bounded(&path, limit)?) != hash(bytes) {
-        return Err("The file was replaced but verification differs. Keep the open document and save a separate copy.".into());
+    observe(WriteStage::BeforeVerify).map_err(after_publish)?;
+    let readback = read_bounded(&path, limit).map_err(after_publish)?;
+    if hash(&readback) != hash(bytes) {
+        return Err(after_publish("read-back content differs".into()));
     }
     Ok(warnings)
 }
@@ -152,8 +191,7 @@ impl FileStore {
         if self.grants.values().any(|g| g.path == path && !g.writable) { return Err("This path is a protected imported source.".into()); }
         // Back up the exact predecessor first in a private, application-owned
         // directory, not into a user-controlled .bak file beside the document.
-        let filename = path.file_name().unwrap().to_string_lossy();
-        let _transaction = lock_path(&path.with_file_name(format!(".{filename}.gin-schnaps.transaction.lock")))?;
+        let _transaction = lock_path(&sibling_lock(&path, ".gin-schnaps.transaction.lock"))?;
         let old = if expected.is_some() { Some(read_bounded(&path, DOCUMENT_LIMIT)?) } else { None };
         if old.as_deref().map(hash).as_deref() != expected { return Err("File conflict: destination changed; use a different Save As path.".into()); }
         let backup_dir = self.data_dir.join("backups");
@@ -267,3 +305,7 @@ mod tests {
         assert!(read_bounded(&link,100).is_err());assert!(replace(&link,b"bad",Some(&hash(b"private")),100).is_err());assert_eq!(fs::read(p).unwrap(),b"private");fs::remove_dir_all(d).unwrap();
     }
 }
+
+#[cfg(test)]
+#[path = "file_safety_tests.rs"]
+mod file_safety_tests;

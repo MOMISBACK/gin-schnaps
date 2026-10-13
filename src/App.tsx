@@ -357,7 +357,7 @@ export default function App() {
     onDragOver={event => { if (event.dataTransfer.types.includes('Files')) event.preventDefault(); }}
     onDrop={event => { event.preventDefault(); void importFiles(event.dataTransfer.files); }}>
     <input ref={fileInput} type="file" accept=".fa,.fasta,.fna,.gb,.gbk,.genbank,.dna,.sg.json,.json" hidden data-testid="file-input" onChange={e => { if (e.target.files) void importFiles(e.target.files); }}/>
-    <header className="document-strip"><div className="brand"><button className="icon-button" aria-label="Show or hide explorer" aria-pressed={layout.explorer} onClick={toggleExplorer}><Icon name="panel"/></button><strong>Gin Schnaps</strong><span className="version">0.8.2</span></div>
+    <header className="document-strip"><div className="brand"><button className="icon-button" aria-label="Show or hide explorer" aria-pressed={layout.explorer} onClick={toggleExplorer}><Icon name="panel"/></button><strong>Gin Schnaps</strong><span className="version">0.8.3</span></div>
       <div className="document-tabs" role="tablist" aria-label="Open documents">{workspace.documents.map(doc => <div key={doc.key} className={`document-tab ${doc.key === workspace.active ? 'active' : ''}`}>
         <button role="tab" aria-selected={doc.key === workspace.active} title={doc.doc.name} aria-label={doc.doc.name} onClick={() => dispatch({ type: 'activate', key: doc.key })}><Icon name={doc.doc.topology === 'circular' ? 'circle' : 'linear'}/><span>{doc.doc.name}</span>{needsExport(doc) && <span className="dirty-dot" aria-label="Unexported changes">●</span>}</button>
         <button className="icon-button close-document" aria-label={`Close ${doc.doc.name}`} onClick={() => closeDocument(doc.key)}><Icon name="close" size={12}/></button>

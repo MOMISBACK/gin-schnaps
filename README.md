@@ -13,7 +13,7 @@ Source on `main` may be newer than the public preview. Download only an asset fr
 
 **[Download published Gin Schnaps previews](https://github.com/MOMISBACK/gin-schnaps/releases)**
 
-The table below describes the published 0.8.1 preview. The 0.8.2 corrective changes are documented in [CHANGELOG](CHANGELOG.md); they are not available until their own release is published.
+The table below describes the package types. Select the version actually listed on the releases page; source changes are not available until their release is published. The 0.8.3 clipboard and file-safety changes are documented in [CHANGELOG](CHANGELOG.md).
 
 Choose a file from **Assets** on that release page:
 
@@ -29,7 +29,7 @@ Choose a file from **Assets** on that release page:
 They are not the ready-to-run application. Older Macs can use the browser package;
 native compatibility with every older macOS version has not been established.
 
-[Installation and troubleshooting](docs/INSTALL.md) · [First steps](docs/USER_GUIDE.md)
+[Installation and troubleshooting](docs/INSTALL.md) · [Installation acceptance checklist](docs/INSTALLATION_CHECKLIST.md) · [First steps](docs/USER_GUIDE.md)
 
 ![Gin Schnaps showing an annotated plasmid](docs/images/overview.png)
 
