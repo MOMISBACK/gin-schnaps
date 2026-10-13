@@ -1,0 +1,59 @@
+name: Prepare reviewed corrective source
+on:
+  push:
+    branches: [fix/0.8.2-reliability]
+    paths: ['.maintenance/**', '.github/workflows/prepare-corrective.yml']
+permissions:
+  contents: read
+jobs:
+  verify:
+    if: startsWith(github.event.head_commit.message, 'chore: transfer corrective')
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: '22'
+      - name: Verify exact reviewed source tree
+        run: |
+          cat .maintenance/part{0,1,2}.xz > /tmp/corrective.xz
+          echo '722919b37af859b5dcbfab049cd52234db7ed0f89fbcdbf4fa114be03bafda65  /tmp/corrective.xz' | sha256sum -c -
+          python3 -c "import lzma,pathlib;pathlib.Path('/tmp/corrective.patch').write_bytes(lzma.decompress(pathlib.Path('/tmp/corrective.xz').read_bytes()))"
+          git read-tree --reset -u 7827c92a26ba60120181010377a332c0bdabbcf4
+          git apply --index --unidiff-zero /tmp/corrective.patch
+          test "$(git write-tree)" = 'eb2d62967febb73e07d24c69ed109198c0eadc26'
+      - name: Install locked dependencies without lifecycle scripts
+        run: npm ci --ignore-scripts --no-fund --no-audit
+      - name: Verify types, model, dependency regressions and release policy
+        run: npm run check
+  record:
+    needs: verify
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          ref: fix/0.8.2-reliability
+          fetch-depth: 0
+      - name: Record the exact verified source without executing it
+        env:
+          EXPECTED_HEAD: ${{ github.sha }}
+        run: |
+          test "$(git rev-parse HEAD)" = "$EXPECTED_HEAD"
+          cat .maintenance/part{0,1,2}.xz > /tmp/corrective.xz
+          echo '722919b37af859b5dcbfab049cd52234db7ed0f89fbcdbf4fa114be03bafda65  /tmp/corrective.xz' | sha256sum -c -
+          python3 -c "import lzma,pathlib;pathlib.Path('/tmp/corrective.patch').write_bytes(lzma.decompress(pathlib.Path('/tmp/corrective.xz').read_bytes()))"
+          git read-tree --reset -u 7827c92a26ba60120181010377a332c0bdabbcf4
+          git apply --index --unidiff-zero /tmp/corrective.patch
+          test "$(git write-tree)" = 'eb2d62967febb73e07d24c69ed109198c0eadc26'
+          git restore --source=HEAD --staged --worktree .github/workflows/prepare-corrective.yml
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git commit -m 'fix: retain editable history, protect PCR drafts and verify public downloads'
+          git push origin HEAD:fix/0.8.2-reliability
