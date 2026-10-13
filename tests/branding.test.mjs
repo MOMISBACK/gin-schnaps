@@ -3,7 +3,10 @@ import assert from 'node:assert/strict';
 import { readFileSync, readdirSync, existsSync } from 'node:fs';
 import path from 'node:path';
 const pkg=JSON.parse(readFileSync('package.json','utf8'));
-function files(dir){return readdirSync(dir,{withFileTypes:true}).flatMap(e=>{const p=path.join(dir,e.name);return e.isDirectory()?files(p):[p];});}
+function files(dir){return readdirSync(dir,{withFileTypes:true}).flatMap(e=>{
+  if(e.isDirectory()&&['target','web','gen','__pycache__'].includes(e.name))return [];
+  const p=path.join(dir,e.name);return e.isDirectory()?files(p):[p];
+});}
 test('one public product identity and synchronized release metadata',()=>{
   assert.equal(pkg.name,'gin-schnaps');
   const lock=JSON.parse(readFileSync('package-lock.json','utf8'));
@@ -17,7 +20,7 @@ test('one public product identity and synchronized release metadata',()=>{
 test('no superseded product branding in first-party runtime or public docs',()=>{
   // Construct the former tokens so this guard itself does not preserve old branding.
   const legacy=new RegExp(['Schnaps'+' Gene','schnaps'+'-gene','org.'+'schnapsgene','Snap'+'Gene'].join('|'),'i');
-  for(const p of [...files('src'),...files('scripts'),...files('docs'),...files('desktop').filter(p=>!p.includes('/target/')&&!p.includes('/web/')&&!p.includes('/gen/')),'README.md','SECURITY.md','CONTRIBUTING.md','CHANGELOG.md']){
+  for(const p of [...files('src'),...files('scripts'),...files('docs'),...files('desktop'),'README.md','SECURITY.md','CONTRIBUTING.md','CHANGELOG.md']){
     if(!/\.(?:ts|tsx|mjs|py|md|json|rs|toml|lock)$/.test(p))continue;
     // Persisted schema tags are retained for backward compatibility, never as labels.
     const content=readFileSync(p,'utf8').replaceAll("'"+'snap'+'gene'+"'","'binary-format-tag'");
