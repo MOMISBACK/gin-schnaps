@@ -1,0 +1,33 @@
+name: Bug report
+description: Report a reproducible problem in Gin Schnaps.
+title: "[Bug]: "
+body:
+  - type: markdown
+    attributes:
+      value: "Do not upload confidential sequences, personal paths, source archives or credentials. Use synthetic examples. Security reports: read SECURITY.md first."
+  - type: input
+    id: version
+    attributes:
+      label: Application version and package
+      placeholder: "0.8.1, browser / macOS Intel / macOS ARM / Windows / Linux"
+    validations:
+      required: true
+  - type: input
+    id: environment
+    attributes:
+      label: Operating system and browser (if applicable)
+    validations:
+      required: true
+  - type: textarea
+    id: reproduce
+    attributes:
+      label: Steps to reproduce
+      description: Include exact commands/buttons and a minimal nonconfidential example.
+    validations:
+      required: true
+  - type: textarea
+    id: outcome
+    attributes:
+      label: Expected and actual result
+    validations:
+      required: true

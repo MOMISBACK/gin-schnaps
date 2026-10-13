@@ -1,0 +1,103 @@
+name: Import the reviewed project snapshot
+on:
+  push:
+    branches: [bootstrap/import]
+    paths: ['.migration/**', '.github/workflows/import.yml']
+permissions:
+  contents: read
+jobs:
+  prepare:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    outputs:
+      tree: ${{ steps.package.outputs.tree }}
+      archive: ${{ steps.package.outputs.archive }}
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: '22'
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065
+        with:
+          python-version: '3.12'
+      - name: Read the exact original source snapshot
+        run: |
+          git init /tmp/gin-upstream
+          git -C /tmp/gin-upstream remote add origin https://github.com/MOMISBACK/schnaps-gene.git
+          git -C /tmp/gin-upstream fetch --depth=1 origin f9448ee172d0050bff5aaa846fd4ec378cc206a7
+          test "$(git -C /tmp/gin-upstream rev-parse FETCH_HEAD^{tree})" = 281fdf91ac26a785e069d2121ecaf220d49ae570
+          mkdir /tmp/gin-source
+          git -C /tmp/gin-upstream archive FETCH_HEAD | tar -x -C /tmp/gin-source
+          python3 .migration/import.py /tmp/gin-source
+      - name: Build and capture the actual renamed interface
+        run: |
+          npm ci --ignore-scripts --no-audit --no-fund
+          npm run build
+          node scripts/licenses.mjs
+          python3 -m pip install playwright==1.58.0
+          python3 -m playwright install --with-deps chromium
+          python3 scripts/capture-overview.py
+          npm run check
+          python3 tests/native-notices-test.py
+      - name: Package only the verified source tree
+        id: package
+        run: |
+          rm -rf .migration
+          git add -A
+          git diff --cached --exit-code -- .github/workflows
+          tree=$(git write-tree)
+          git archive --format=tar "$tree" | gzip -n > /tmp/gin-import.tar.gz
+          echo "tree=$tree" >> "$GITHUB_OUTPUT"
+          echo "archive=$(sha256sum /tmp/gin-import.tar.gz | cut -d' ' -f1)" >> "$GITHUB_OUTPUT"
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: reviewed-import
+          path: /tmp/gin-import.tar.gz
+          retention-days: 3
+  record:
+    needs: prepare
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          ref: bootstrap/import
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
+        with:
+          name: reviewed-import
+          path: /tmp/approved-import
+      - name: Record exact inspected sources without executing them
+        env:
+          EXPECTED_HEAD: ${{ github.sha }}
+          EXPECTED_TREE: ${{ needs.prepare.outputs.tree }}
+          EXPECTED_ARCHIVE: ${{ needs.prepare.outputs.archive }}
+        run: |
+          test "$(git rev-parse HEAD)" = "$EXPECTED_HEAD"
+          echo "$EXPECTED_ARCHIVE  /tmp/approved-import/gin-import.tar.gz" | sha256sum -c -
+          python3 - <<'PY'
+          import pathlib,subprocess,tarfile
+          archive='/tmp/approved-import/gin-import.tar.gz'
+          with tarfile.open(archive) as source:
+              members=source.getmembers()
+              assert len(members)<2000 and sum(m.size for m in members)<15000000
+              for item in members:
+                  p=pathlib.PurePosixPath(item.name)
+                  assert not p.is_absolute() and not {'..','.git','node_modules'}&set(p.parts)
+                  assert item.isfile() or item.isdir()
+              for name in subprocess.check_output(['git','ls-files','-z']).decode().split('\0'):
+                  if name:
+                      p=pathlib.Path(name)
+                      if p.is_file() or p.is_symlink():p.unlink()
+              source.extractall('.',filter='data')
+          PY
+          git add -A
+          test "$(git write-tree)" = "$EXPECTED_TREE"
+          git diff --cached --exit-code -- .github/workflows
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git commit -m 'feat: import Gin Schnaps with native files and user-focused documentation'
+          git push origin HEAD:bootstrap/import

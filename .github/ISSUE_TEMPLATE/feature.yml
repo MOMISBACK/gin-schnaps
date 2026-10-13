@@ -1,0 +1,11 @@
+name: Feature request
+description: Describe a missing workflow rather than just a new button.
+title: "[Feature]: "
+body:
+  - type: textarea
+    id: need
+    attributes:
+      label: Workflow and expected result
+      description: Explain the need, inputs, outputs and how correctness could be tested. No confidential data.
+    validations:
+      required: true
