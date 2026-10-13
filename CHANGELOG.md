@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.8.4 — expert interface (preview)
+
+- Remove persistent tutorials and milestone labels from the workbench.
+- Keep action labels, units, state and input-specific warnings visible; place
+  conventions in optional contextual help. Reports retain all engine messages.
+- Shorten clipboard, edit, PCR, recovery and export dialogs without changing their
+  safety controls. User data and scientific algorithms are unchanged.
+- Display imported oligo provenance as `.dna import`, not a persisted internal tag.
+
+
 ## 0.8.3 — DNA clipboard and native file resilience (preview)
 
 - Preserve native lock coordination for ordinary paths; avoid overflowing lock-file

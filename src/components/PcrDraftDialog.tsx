@@ -22,8 +22,8 @@ export function PcrDraftDialog({ name, validationError, onKeep, onDiscard, onSav
         if ((e.metaKey || e.ctrlKey) && ['s', 'o', 'n', 'z', 'q'].includes(e.key.toLowerCase())) { e.preventDefault(); e.stopPropagation(); }
       }}>
       <header className="dialog-heading"><h2 id="pcr-draft-title">Unsaved PCR draft</h2></header>
-      <div className="dialog-body"><p>“{name}” contains PCR form changes that are not stored in its document.</p>
-        <p>Keep working to review them. Save PCR setup stores valid fields in the document and keeps the tab open; save or export the document afterwards. Discard draft and close explicitly abandons these form changes.</p>
+      <div className="dialog-body"><p>“{name}” has an unsaved PCR draft.</p>
+        <p>Save PCR setup keeps this tab open. Then save the document to retain it.</p>
         {(validationError || error) && <p role="alert" className="validation-error">{validationError || error}</p>}
       </div>
       <footer className="dialog-footer"><button onClick={onKeep}>Keep working</button>

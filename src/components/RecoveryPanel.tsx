@@ -1,6 +1,7 @@
 import { openRecoveryBackend, type RecoveryBackend } from '../storage/native-recovery';
 import { isDesktop } from '../adapters/desktop';
 import React, { useEffect, useRef, useState } from 'react';
+import { HelpDetails } from './HelpDetails';
 import { encodeRecovery, type RecoverySnapshot } from '../storage/recovery';
 import type { Workspace } from '../domain/workspace';
 
@@ -57,11 +58,11 @@ export function RecoveryPanel({ workspace, restore, modalOpen, onClose }: {
     {pending && !modalOpen && <div className="recovery-available" role="status">A local session is available for recovery. Open “Recovery”.</div>}
     {error && !modalOpen && <div className="recovery-available recovery-error" role="status">Recovery paused or unavailable. Export manually; see “Recovery” for details.</div>}
     {modalOpen && <div className="modal-overlay"><div className="edit-dialog recovery-dialog" role="dialog" aria-modal="true" aria-labelledby="recovery-title" ref={panel}
-      onKeyDown={e => { if (e.key === 'Escape') { e.stopPropagation(); onClose(); } if (e.key === 'Tab') { const n = Array.from(panel.current!.querySelectorAll<HTMLElement>('button:not(:disabled),input:not(:disabled)')); const first = n[0], last = n[n.length - 1]; if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus(); } else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); } } }}>
+      onKeyDown={e => { if (e.key === 'Escape') { e.stopPropagation(); onClose(); } if (e.key === 'Tab') { const n = Array.from(panel.current!.querySelectorAll<HTMLElement>('button:not(:disabled),input:not(:disabled),summary')); const first = n[0], last = n[n.length - 1]; if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus(); } else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); } } }}>
       <header className="dialog-heading"><h2 id="recovery-title">Local recovery</h2><button onClick={onClose}>Close</button></header>
-      <div className="dialog-body"><p>Disabled by default. Sequences will be stored <strong>without application-level encryption</strong> {isDesktop() ? 'in the application data directory on this device, independently of the application location.' : 'in this browser, on this device and for this file path.'}</p>
-        <p>Two copies are retained: the latest write and the previous one. No network upload. {isDesktop() ? 'Disk or permission errors can prevent recovery; use saved document files as your primary copies.' : 'The browser may refuse or clear this storage; it does not replace exported files.'}</p>
-        <p>Current documents include the saved oligo library and PCR setup. Calculations, unsaved PCR form entries, selections and undo stacks are not recovered. Edits made in the second before interruption may be missing.</p>
+      <div className="dialog-body"><p>Stores sequences <strong>unencrypted</strong> {isDesktop() ? 'in local application data.' : 'in this browser profile, for this file path.'} Keep independent backups.</p>
+        <p>Unsaved PCR drafts, calculations and undo history are not recovered.</p>
+        <HelpDetails label="Recovery details"><p>Current and previous document copies; writes delayed by one second. Stored oligos and saved PCR setup are included.</p><p>{isDesktop() ? 'Disk or permission errors may prevent writes.' : 'Browser storage can be refused or cleared; moving the HTML changes its recovery location.'} Recovery is not a backup.</p></HelpDetails>
         {!ready && <p>Checking storage…</p>}{error && <p role="alert" className="validation-error">{error}</p>}
         {pending ? <section className="edit-preview"><h3>{pending.documents.length} recoverable document(s)</h3><p>{new Date(pending.savedAt).toLocaleString("en-US")}</p>
           <p>{pending.documents.map(d => d.doc.name).join(' · ')}</p>{fallback && <p className="preview-warning">Latest copy is invalid: the previous validated copy is offered.</p>}

@@ -3,6 +3,7 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { executeCommand, type Command, type CommandResult } from '../domain/commands';
 import { type Feature, type Qualifier, type SequenceDocument, type Selection, featureSelection, fromUserRange, selectionSegments, toUserRange } from '../domain/model';
 import { Icon } from './Icon';
+import { HelpDetails } from './HelpDetails';
 
 export type EditMode = 'bases' | 'feature' | 'topology';
 export function EditDialog({ doc, selection, mode, featureId, onClose, onApply }: {
@@ -74,7 +75,7 @@ export function EditDialog({ doc, selection, mode, featureId, onClose, onApply }
       onKeyDown={event => {
         if (event.key === 'Escape') { event.preventDefault(); event.stopPropagation(); onClose(); }
         if (event.key === 'Tab') {
-          const focusable = Array.from(dialog.current!.querySelectorAll<HTMLElement>('button:not(:disabled),input:not(:disabled),select:not(:disabled),textarea:not(:disabled),[tabindex="0"]'));
+          const focusable = Array.from(dialog.current!.querySelectorAll<HTMLElement>('button:not(:disabled),input:not(:disabled),select:not(:disabled),textarea:not(:disabled),[tabindex="0"],summary'));
           const first = focusable[0], last = focusable[focusable.length - 1];
           if (event.shiftKey && document.activeElement === first) { event.preventDefault(); last.focus(); }
           else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first.focus(); }
@@ -88,21 +89,21 @@ export function EditDialog({ doc, selection, mode, featureId, onClose, onApply }
           {mode === 'bases' && <label className="form-row">Operation<select aria-label="Base operation" value={operation} onChange={e => setOperation(e.target.value as typeof operation)}>
             <option value="replace">Replace a region</option><option value="insert">Insert before a base</option><option value="delete">Delete a region</option>
           </select></label>}
-          {mode === 'topology' ? <><label className="form-row">Actual document topology<select aria-label="Document topology" value={topology} onChange={e => setTopology(e.target.value as typeof topology)}><option value="linear">Linear</option><option value="circular">Circular</option></select></label><p className="field-note">This command changes the property saved in the file, not just the shape of the map. It does not predict a ligation reaction.</p></> : <>
+          {mode === 'topology' ? <><label className="form-row">Topology<select aria-label="Document topology" value={topology} onChange={e => setTopology(e.target.value as typeof topology)}><option value="linear">Linear</option><option value="circular">Circular</option></select></label><p className="field-note">Changes saved topology, not just map layout.</p></> : <>
             {mode === 'feature' && <><label className="form-row">Name<input aria-label="Feature name" value={name} onChange={e => setName(e.target.value)} maxLength={500}/></label>
               <div className="form-columns"><label className="form-row">Type<input aria-label="Feature type" value={type} onChange={e => setType(e.target.value)} list="feature-types"/><datalist id="feature-types"><option value="misc_feature"/><option value="CDS"/><option value="gene"/><option value="promoter"/><option value="rep_origin"/></datalist></label>
                 <label className="form-row">Strand<select aria-label="Feature strand" disabled={advanced} value={advanced ? (unstranded ? 0 : preview.result?.doc.features.find(f=>f.id===(existing?.id??newId.current))?.strand ?? strand) : strand} onChange={e => setStrand(Number(e.target.value) as Feature['strand'])}><option value="1">Forward (+)</option><option value="-1">Reverse (−)</option><option value="0">Unstranded</option></select></label>
                 <label className="color-input">Colour<input aria-label="Feature colour" type="color" value={color} onChange={e => setColor(e.target.value)}/></label></div></>}
             {mode==='feature' && <label className="analysis-check"><input type="checkbox" checked={advanced} onChange={e=>switchLocationMode(e.target.checked)}/>Use a location expression (join, complement, uncertain or remote)</label>}
-            {mode==='feature' && advanced ? <label className="form-row">Location expression<textarea aria-label="Feature location expression" value={expression} onChange={e=>{setModeError('');setExpression(e.target.value);}} maxLength={10000}/><span className="field-note">Exact joins keep their parts. Uncertain, remote, between-base and order descriptors remain read-only, without a map projection. The expression defines the strand unless an exact feature is explicitly unstranded.</span></label> : <div className="form-columns coordinates"><label className="form-row">{mode === 'bases' && operation === 'insert' ? "Before base" : "Start"}<input aria-label="Edit start" value={start} onChange={e => setStart(e.target.value)} inputMode="numeric"/></label>
+            {mode==='feature' && advanced ? <label className="form-row">Location expression<textarea aria-label="Feature location expression" value={expression} onChange={e=>{setModeError('');setExpression(e.target.value);}} maxLength={10000}/><span className="field-note">Exact joins retain separate parts. Unresolved descriptors are not mapped.</span></label> : <div className="form-columns coordinates"><label className="form-row">{mode === 'bases' && operation === 'insert' ? "Before base" : "Start"}<input aria-label="Edit start" value={start} onChange={e => setStart(e.target.value)} inputMode="numeric"/></label>
               {!(mode === 'bases' && operation === 'insert') && <label className="form-row">End<input aria-label="Edit end" value={end} onChange={e => setEnd(e.target.value)} inputMode="numeric"/></label>}</div>}
             {mode === 'feature' && advanced && <label className="analysis-check"><input type="checkbox" checked={unstranded} onChange={e=>setUnstranded(e.target.checked)}/>Unstranded exact feature</label>}
             {modeError && <p className="validation-error" role="status">{modeError}</p>}
-            <p className="field-note">1-based coordinates, inclusive ends. {mode === 'bases' && operation === 'insert' ? `Use ${doc.sequence.length + 1} to insert at the end.` : "On a circular molecule, start > end crosses the origin."}</p>
+            <HelpDetails label="Coordinates & editing"><p>1-based, inclusive. Start &gt; end crosses a circular origin. Insert at {doc.sequence.length + 1} to append.</p><p>Insertions at feature boundaries are excluded. Replacement inherits a feature only when strictly inside it. Deleted features are not transferred.</p></HelpDetails>
           </>}
-          {mode === 'bases' && operation !== 'delete' && <label className="form-row">DNA to insert (reference strand, 5′ → 3′)<textarea className="dna-input" aria-label="DNA to insert" rows={4} value={dna} onChange={e => setDna(e.target.value)} spellCheck={false}/><span className="field-note">IUPAC bases only. Whitespace removed and letters converted to uppercase: {normalized.length} bases.</span></label>}
-          {mode === 'bases' && <p className="field-note">DNA added at feature boundaries is excluded. Replacement DNA inherits a feature only if the replacement lies strictly inside it. A fully deleted feature is not transferred to replacement DNA.</p>}
-          {mode === 'feature' && <section className="qualifier-editor"><h3>Qualifiers</h3><p className="field-note">Declared values, not biologically validated. Repeated keys are preserved separately.</p>
+          {mode === 'bases' && operation !== 'delete' && <label className="form-row">DNA to insert (reference strand, 5′ → 3′)<textarea className="dna-input" aria-label="DNA to insert" rows={4} value={dna} onChange={e => setDna(e.target.value)} spellCheck={false}/><span className="field-note">{normalized.length} bp · IUPAC DNA{dna !== normalized ? " · normalized to uppercase without whitespace" : ""}</span></label>}
+          {mode === 'bases' && <p className="field-note">Review affected features below.</p>}
+          {mode === 'feature' && <section className="qualifier-editor"><h3>Qualifiers</h3>
             {qualifiers.map((q, i) => <div className="qualifier-row" key={i}><input aria-label={`Key ${i + 1}`} placeholder="note, gene, transl_table…" value={q.key} onChange={e => patchQualifier(i, { key: e.target.value })}/>
               <input aria-label={`Value ${i + 1}`} value={q.value ?? ''} disabled={q.value === null} onChange={e => patchQualifier(i, { value: e.target.value })}/>
               <label><input type="checkbox" checked={q.value === null} onChange={e => patchQualifier(i, { value: e.target.checked ? null : '' })}/>Flag (no value)</label>
@@ -111,12 +112,12 @@ export function EditDialog({ doc, selection, mode, featureId, onClose, onApply }
             {!!existing?.archivedQualifiers.length && <p className="field-note">{existing.archivedQualifiers.length} archived values remain available in the feature details.</p>}
             {existing && <label className="delete-feature"><input type="checkbox" checked={remove} onChange={e => setRemove(e.target.checked)}/>Delete this feature (does not delete bases)</label>}
           </section>}
-          <section className="edit-preview" aria-label="Edit preview"><h3>Preview — nothing applied yet</h3>
+          <section className="edit-preview" aria-label="Edit preview"><h3>Preview</h3>
             {preview.error ? <p className="validation-error" role="status">{preview.error}</p> : preview.result && <><p><strong>{doc.sequence.length.toLocaleString("en-US")} → {preview.result.doc.sequence.length.toLocaleString("en-US")} bp</strong> · {preview.result.changed} feature(s) adjusted · {preview.result.removed} removed</p>
               {preview.result.doc === doc && <p>No changes.</p>}{preview.result.warnings.map((w, i) => <p className="preview-warning" key={i}>{w}</p>)}</>}
           </section>
         </div>
-        <footer className="dialog-footer"><span>Undo is available after applying, during this session.</span><button type="button" onClick={onClose}>Cancel</button><button type="submit" className="primary-button" disabled={!preview.result || preview.result.doc === doc}>Apply</button></footer>
+        <footer className="dialog-footer"><button type="button" onClick={onClose}>Cancel</button><button type="submit" className="primary-button" disabled={!preview.result || preview.result.doc === doc}>Apply</button></footer>
       </form>
     </div>
   </div>;

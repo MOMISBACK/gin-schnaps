@@ -45,7 +45,7 @@ with sync_playwright() as p:
     def genbank():
         button('Export current document as GenBank').click()
         expect(button('Download GenBank')).to_be_disabled()
-        page.get_by_role('checkbox',name='I understand the limitations; I will also keep the native file.',exact=True).check()
+        page.get_by_role('checkbox',name='Export with these limitations (.sg.json retains all data).',exact=True).check()
         with page.expect_download() as ev:button('Download GenBank').click()
         text=Path(ev.value.path()).read_text();page.keyboard.press('Escape');return text
     def fill_pcr():
@@ -59,7 +59,7 @@ with sync_playwright() as p:
         d=native();d['name']='Library template';d['sequence']='ATGCGTAC'+'AC'*12+rc('TACCGCTA');d['topology']='linear';d['features']=[];d['primers']=[];d['pcrRecipe']=None;d['sourceArchive']=None
         upload('library.sg.json',d);tab('Primers');fill_pcr();return native()
     def expand_library():
-        if not page.locator('.primer-library').get_attribute('open'):page.locator('.primer-library summary').click()
+        if not page.locator('.primer-library').get_attribute('open'):page.locator('.primer-library > summary').click()
     try:
         load()
         if case=='library':
@@ -105,7 +105,7 @@ with sync_playwright() as p:
             text=(ROOT/'tests/fixtures/synthetic-120.gb').read_text().replace('     misc_feature    41..80','     CDS             join(41..50,61..80)').replace('/label="Region B"','/label="Region B"\n                     /translation="FAKE"')
             upload('joined.gb',text.encode());joined=native();f=joined['features'][2]
             assert f['segments']==[{'start':40,'end':50},{'start':60,'end':80}]
-            tab('Features');button(f['name']).click();expect(page.locator('.detail-row')).to_contain_text('intervening bases are not part')
+            tab('Features');button(f['name']).click();expect(page.locator('.detail-row')).to_contain_text('Select a feature segment:')
             button('Part 2: 61..80').click();expect(page.get_by_test_id('selection-status')).to_contain_text('20 bp')
             tab('Sequence');expect(page.locator('.sequence-feature').first).to_be_visible() if page.locator('.sequence-feature').count() else None
             page.screenshot(path=str(OUT/'step7-joined-sequence.png'))
@@ -174,7 +174,7 @@ with sync_playwright() as p:
                 snapshot=page.evaluate('''async()=>new Promise((resolve,reject)=>{const r=indexedDB.open('gin-schnaps-recovery-v1:'+location.pathname,1);r.onsuccess=()=>{const db=r.result,t=db.transaction('recovery'),q=t.objectStore('recovery').get('current');t.oncomplete=()=>{db.close();resolve(JSON.parse(q.result))};t.onerror=()=>reject(t.error)};r.onerror=()=>reject(r.error)})''')
                 assert snapshot['documents'][snapshot['activeIndex']]['doc']==before
                 page.once('dialog',lambda d:d.accept());page.reload();button('Recovery').click();button('Restore session').click();page.keyboard.press('Escape')
-                after=native();assert after==before;tab('Primers');expect(page.get_by_label('Primer tail 1',exact=True)).to_have_value('GG');expect(page.locator('.primer-library summary')).to_contain_text('(2)')
+                after=native();assert after==before;tab('Primers');expect(page.get_by_label('Primer tail 1',exact=True)).to_have_value('GG');expect(page.locator('.primer-library > summary')).to_contain_text('(2)')
                 report['persistenceTested']=True;passed('Opt-in IndexedDB recovery restores complete oligos and the exact saved PCR recipe after an actual reload')
         assert not report['errors'],report['errors'];assert not report['network'],report['network']
         passed('No JavaScript/CSP errors or HTTP/HTTPS requests in this scenario');report['success']=True

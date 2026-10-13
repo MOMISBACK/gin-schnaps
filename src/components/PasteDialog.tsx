@@ -4,6 +4,7 @@ import { createDocument, newDocumentId } from '../domain/document-operations';
 import { type Selection, type SequenceDocument, serializeDocument, toUserRange } from '../domain/model';
 import { MAX_PASTE_CHARACTERS, parsePastedDNA, pasteIntoDocument } from '../domain/sequence-paste';
 import { Icon } from './Icon';
+import { HelpDetails } from './HelpDetails';
 
 export type CopiedDNA = { sequence: string; sourceName: string };
 export function PasteDialog({ doc, selection, initialText, copied, canCreate, onClose, onApply, onCreate }: {
@@ -68,7 +69,7 @@ export function PasteDialog({ doc, selection, initialText, copied, canCreate, on
       onKeyDown={event => {
         if (event.key === 'Escape') { event.preventDefault(); event.stopPropagation(); onClose(); }
         if (event.key === 'Tab') {
-          const nodes = Array.from(container.current!.querySelectorAll<HTMLElement>('input:not(:disabled),textarea:not(:disabled),select:not(:disabled),button:not(:disabled)'));
+          const nodes = Array.from(container.current!.querySelectorAll<HTMLElement>('input:not(:disabled),textarea:not(:disabled),select:not(:disabled),button:not(:disabled),summary'));
           const first = nodes[0], last = nodes[nodes.length - 1];
           if (event.shiftKey && document.activeElement === first) { event.preventDefault(); last.focus(); }
           else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first.focus(); }
@@ -93,7 +94,7 @@ export function PasteDialog({ doc, selection, initialText, copied, canCreate, on
             }}/></label>
           <div className="paste-actions"><button type="button" disabled={reading} onClick={() => void readClipboard()}>{reading ? 'Reading…' : 'Read clipboard'}</button>
             {copied && <button type="button" title={`${copied.sequence.length} bases from ${copied.sourceName}; session memory only`} onClick={() => { setDNA(copied.sequence); setClipboardNotice(`Using ${copied.sequence.length.toLocaleString('en-US')} bases last copied from ${copied.sourceName}; not a fresh system clipboard read.`); input.current?.focus(); }}>Use last copied DNA</button>}
-            <span className="field-note">Plain DNA or one FASTA record. No line numbers, gaps or RNA.</span></div>
+            <span className="field-note">DNA or single-record FASTA</span></div>
           {clipboardNotice && <p className="field-note" role="status">{clipboardNotice}</p>}
           <label className="analysis-check"><input type="checkbox" checked={reverse} onChange={event => setReverse(event.target.checked)}/>Reverse-complement pasted DNA</label>
           <label className="form-row">Operation<select aria-label="Paste operation" value={mode} onChange={event => setMode(event.target.value as typeof mode)}>
@@ -104,14 +105,14 @@ export function PasteDialog({ doc, selection, initialText, copied, canCreate, on
             <div className="form-columns"><label className="form-row">{mode === 'insert' ? 'Before base' : 'Start'}<input aria-label="Paste start" value={start} inputMode="numeric" onChange={event => setStart(event.target.value)}/></label>
               {mode === 'replace' && <label className="form-row">End<input aria-label="Paste end" value={end} inputMode="numeric" onChange={event => setEnd(event.target.value)}/></label>}
               {mode === 'insert' && <button type="button" onClick={() => setStart(String(doc!.sequence.length + 1))}>Append at end</button>}
-            </div><p className="field-note">1-based coordinates, inclusive ends. {mode === 'insert' ? `Base ${doc!.sequence.length + 1} appends after the last base.` : 'Start > end replaces across the origin only on a circular molecule.'}</p>
+            </div><HelpDetails label="Paste details"><p>1-based, inclusive. Insert at {doc!.sequence.length + 1} to append. Start &gt; end replaces across a circular origin.</p><p>Bases only; source features and oligos are not transferred. Destination features follow the editing rules shown in the preview.</p></HelpDetails>
           </>}
-          <section className="edit-preview" aria-label="Paste preview"><h3>Preview — nothing applied yet</h3>
+          <section className="edit-preview" aria-label="Paste preview"><h3>Preview</h3>
             {preview.error ? <p className="validation-error" role="status">{preview.error}</p> : <><p><strong>{preview.length?.toLocaleString('en-US')} pasted bases</strong>{preview.result ? ` · ${doc!.sequence.length.toLocaleString('en-US')} → ${preview.result.doc.sequence.length.toLocaleString('en-US')} bp · ${preview.result.changed} feature(s) adjusted · ${preview.result.removed} removed` : ' · source annotations are not transferred'}</p>
               {!changed && <p>No sequence change.</p>}{preview.warnings.map((warning, i) => <p className="preview-warning" key={i}>{warning}</p>)}</>}
           </section>
         </div>
-        <footer className="dialog-footer"><span>{mode === 'new' ? 'Existing documents are unchanged.' : 'One operation; Undo restores the previous document.'}</span><button type="button" onClick={onClose}>Cancel</button><button type="submit" className="primary-button" disabled={!changed || reading}>{mode === 'new' ? 'Create document' : 'Apply paste'}</button></footer>
+        <footer className="dialog-footer"><button type="button" onClick={onClose}>Cancel</button><button type="submit" className="primary-button" disabled={!changed || reading}>{mode === 'new' ? 'Create document' : 'Apply paste'}</button></footer>
       </form>
     </div>
   </div>;

@@ -72,7 +72,7 @@ with sync_playwright() as p:
         mark('Loading stored setup requires explicit permission to overwrite changed form fields')
         page.get_by_label('Primer name 1',exact=True).fill('Independent draft')
         # Add/modify library data without changing independent manual fields.
-        summary=page.locator('.primer-library summary')
+        summary=page.locator('.primer-library > summary')
         if not page.locator('.primer-library').get_attribute('open'):summary.click()
         button('Add oligo').click();page.get_by_label('Oligo name',exact=True).fill('Additional oligo');page.get_by_label('Oligo sequence',exact=True).fill('ACGTACGT')
         button('Save oligo').click();page.keyboard.press('Escape')

@@ -147,3 +147,10 @@ An explicit **Reverse-complement pasted DNA** option changes the pasted bases on
 
 Normal text fields keep their ordinary Copy/Paste behavior. Direct free typing
 into the displayed nucleotide rows and cross-document Cut are not implemented.
+
+## Compact interface
+
+The interface shows parameters and results by default. Use **Help** for shortcuts,
+saving, privacy and licenses; expand **PCR limits**, **CDS conventions**, or
+**Model details** for calculation conventions. Input-specific warnings and data-loss
+confirmations remain visible. User names, notes and imported history are not rewritten.

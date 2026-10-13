@@ -39,7 +39,7 @@ export function SequenceView({ entry, onSelect, onScroll, reverse, labels, onVie
     <div className="sequence-settings"><label>Bases per line <select aria-label="Bases per line" value={lineWidth} onChange={e => setLineWidth(Number(e.target.value))}><option value={0}>Auto</option>{[50,60,80,100].map(n => <option key={n} value={n}>{n}</option>)}</select></label>
       <label>Translation track <select aria-label="Translation track" value={frame} onChange={e => setFrame(e.target.value)}><option value="none">None</option>{['+1','+2','+3','-1','-2','-3'].map(f => <option key={f} value={f}>Frame {f}</option>)}</select></label>
       {frame !== 'none' && <label>Code <select aria-label="Track genetic code" value={code} onChange={e => setCode(Number(e.target.value) as GeneticCode)}><option value={1}>1 · Standard</option><option value={11}>11 · Bacteria / Archaea / plastids</option></select></label>}
-      <span className="field-note">{job.busy && frame !== 'none' ? 'Translating in worker…' : frame !== 'none' ? 'Reading frame, not a CDS prediction. * stop; X unresolved.' : 'Double-click a feature to edit.'}</span>
+      {frame !== 'none' && <span className="field-note" title="Reading-frame translation, not a CDS prediction">{job.busy ? 'Translating…' : '* stop · X unresolved'}</span>}
     </div>
     {frame !== 'none' && job.error && <p className="analysis-error" role="status">{job.error}</p>}
     <div ref={ref} className="sequence-viewport" data-testid="sequence-view" tabIndex={0} aria-label="Sequence. Select a region, then use Edit bases to edit."

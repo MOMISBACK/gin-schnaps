@@ -19,7 +19,7 @@ export function DocumentDialog({ mode, entry, onClose, onCreate, onApply }: { mo
   useEffect(() => { const previous = document.activeElement as HTMLElement | null; container.current?.querySelector<HTMLElement>('input,button')?.focus(); return () => { if (previous?.isConnected) previous.focus(); }; }, []);
   const preview = useMemo((): { created?: SequenceDocument; result?: CommandResult; warnings: string[]; error?: string } => {
     try {
-      if (mode === 'new') return { created: createDocument({ name, description, sequence: dna, topology }, id.current), warnings: ['Whitespace is removed and letters are uppercased. No feature, code or topology is inferred from the sequence.'] };
+      if (mode === 'new') return { created: createDocument({ name, description, sequence: dna, topology }, id.current), warnings: dna !== dna.replace(/\s/g, '').toUpperCase() ? ['Whitespace removed; bases uppercased.'] : [] };
       if (!doc || !entry) throw new Error('No active document.');
       if (mode === 'extract' && !entry.selection) throw new Error('Select a region first.');
       if (mode === 'duplicate' || mode === 'extract') { const next = deriveDocument(doc, { name, region: mode === 'extract' ? entry.selection : null, includeFeatures, id: id.current }); return { created: next.doc, warnings: next.warnings }; }
@@ -41,12 +41,12 @@ export function DocumentDialog({ mode, entry, onClose, onCreate, onApply }: { mo
       {['new','metadata','duplicate','extract'].includes(mode) && <label className="form-row">Name<input aria-label="Document name" value={name} onChange={e => setName(e.target.value)} maxLength={200}/></label>}
       {['new','metadata'].includes(mode) && <label className="form-row">Description<textarea aria-label="Document description" value={description} onChange={e => setDescription(e.target.value)} rows={3} maxLength={10000}/></label>}
       {mode === 'new' && <><label className="form-row">DNA, reference strand 5′→3′<textarea aria-label="New DNA sequence" className="dna-input" value={dna} onChange={e => setDna(e.target.value)} rows={5} spellCheck={false} maxLength={200000}/></label><label className="form-row">Topology<select aria-label="New document topology" value={topology} onChange={e => setTopology(e.target.value as typeof topology)}><option value="linear">Linear</option><option value="circular">Circular</option></select></label></>}
-      {mode === 'extract' && <><p>Selected reference region: {range?.start}..{range?.end} · {entry?.selection?.length} bp. A new <strong>linear</strong> document will be created.</p><label className="check-row"><input type="checkbox" checked={includeFeatures} onChange={e => setIncludeFeatures(e.target.checked)}/>Transfer overlapping features (clipped features require review)</label></>}
+      {mode === 'extract' && <><p>{range?.start}..{range?.end} · {entry?.selection?.length} bp → new <strong>linear</strong> document</p><label className="check-row"><input type="checkbox" checked={includeFeatures} onChange={e => setIncludeFeatures(e.target.checked)}/>Transfer overlapping features (clipped features require review)</label></>}
       {mode === 'rotate-origin' && <label className="form-row">Previous base that becomes base 1<input aria-label="New origin" value={origin} onChange={e => setOrigin(e.target.value)} inputMode="numeric"/></label>}
-      {mode === 'reverse-complement' && <p>This changes the reference strand of the <strong>entire molecule</strong>, not just the selection. Feature coordinates and orientations change together. Use Copy reverse complement to copy a selected region without changing the document.</p>}
-      {mode === 'duplicate' && <p>The copy has an independent document identifier and undo history. The source document is unchanged. Any original source archive is retained as historical data.</p>}
-      <section className="edit-preview" aria-label="Document operation preview"><h3>Preview — nothing applied yet</h3>
+      {mode === 'reverse-complement' && <p>Applies to the <strong>entire molecule</strong>, not just the selection.</p>}
+      {mode === 'duplicate' && <p>Creates an independent copy; source unchanged.</p>}
+      <section className="edit-preview" aria-label="Document operation preview"><h3>Preview</h3>
         {preview.error ? <p className="validation-error" role="status">{preview.error}</p> : <><p><strong>{(preview.created ?? preview.result?.doc)?.sequence.length.toLocaleString('en-US')} bp</strong> · {(preview.created ?? preview.result?.doc)?.features.length} features</p>{!changed && <p>No changes.</p>}{preview.warnings.map((w,i) => <p className="preview-warning" key={i}>{w}</p>)}</>}
-      </section></div><footer className="dialog-footer"><span>{preview.created ? 'The source document will not be changed.' : 'Undo is available during this session.'}</span><button type="button" onClick={onClose}>Cancel</button><button type="submit" className="primary-button" disabled={!changed}>{['new','duplicate','extract'].includes(mode) ? 'Create document' : 'Apply'}</button></footer></form>
+      </section></div><footer className="dialog-footer"><button type="button" onClick={onClose}>Cancel</button><button type="submit" className="primary-button" disabled={!changed}>{['new','duplicate','extract'].includes(mode) ? 'Create document' : 'Apply'}</button></footer></form>
     </div></div>;
 }
