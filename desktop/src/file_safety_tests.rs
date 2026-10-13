@@ -170,6 +170,11 @@ fn ordinary_lock_names_remain_compatible_with_previous_versions() {
 fn invalid_unicode_path_is_refused_not_lossily_aliased() {
     use std::os::unix::ffi::OsStringExt;
     let scratch=Scratch::new(); let path=scratch.0.join(std::ffi::OsString::from_vec(vec![0xff,b'.',b'f',b'a']));
-    fs::write(&path,b"original").unwrap(); assert!(checked_path(&path).unwrap_err().contains("valid Unicode"));
-    assert_eq!(fs::read(&path).unwrap(),b"original");
+    // Some filesystems reject invalid UTF-8 at creation. The application must
+    // refuse such input *before* touching a path, not depend on creating it.
+    // A valid file at the lossy spelling must never be used as an alias.
+    let lossy = PathBuf::from(path.to_string_lossy().into_owned());
+    fs::write(&lossy,b"original at a different valid name").unwrap();
+    assert!(checked_path(&path).unwrap_err().contains("valid Unicode"));
+    assert_eq!(fs::read(&lossy).unwrap(),b"original at a different valid name");
 }
