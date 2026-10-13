@@ -7,7 +7,7 @@ permissions:
   contents: read
 jobs:
   record:
-    if: startsWith(github.event.head_commit.message, 'chore: transfer verified clipboard')
+    if: "startsWith(github.event.head_commit.message, 'chore: transfer verified clipboard')"
     runs-on: ubuntu-latest
     timeout-minutes: 3
     permissions:
@@ -27,7 +27,7 @@ jobs:
           git apply --index /tmp/clipboard.patch
           git rm -r .clipboard-transfer .github/workflows/clipboard-transfer.yml
           test "$(git write-tree)" = '94e401aca3f6ff1e7932f346ecbc02a2b32ef2be'
-          git restore --source=HEAD --staged --worktree .github/workflows/clipboard-transfer.yml
+          git restore --source=HEAD --staged --worktree .github/workflows/clipboard-transfer.yml .github/workflows/ci.yml
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
           git commit -m 'feat: add verified DNA clipboard and selection synchronization'
