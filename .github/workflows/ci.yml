@@ -164,6 +164,10 @@ jobs:
           python3 tests/native-desktop.py
       - name: Build distributable without test controls
         run: cargo +1.99.0 build --release --locked --manifest-path desktop/Cargo.toml
+      - name: Optimized native save failure regressions
+        run: |
+          cargo +1.99.0 test --release --locked --manifest-path desktop/Cargo.toml file_safety_tests -- --test-threads=1 2>&1 | tee test-results/native-save-release.log
+          python3 scripts/check-native-save-tests.py
       - name: Production binary rendering probe
         run: |
           if [ "$RUNNER_OS" = Windows ]; then
