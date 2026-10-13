@@ -79,12 +79,15 @@ a Git checkout and a built dist/. It refuses to package font binaries and does
 not place tests or sources in the end-user browser archive.
 
 CI runs browser checks on three OS families and native checks on Linux, Windows,
-macOS Intel and Apple Silicon. A main-branch merge whose commit title starts with
-`release:` publishes a **prerelease only after all jobs pass**, using the package.json
-version. Assets include native packages, browser ZIP, corresponding-source ZIP,
-checksums and a provenance manifest. Existing tags/assets are never overwritten.
+macOS Intel and Apple Silicon. A successful main-branch build triggers a separate
+download publisher, independent of the merge commit message. It publishes a
+**prerelease only after every required platform and audit job passes**, using the
+tested package.json version. Assets include native packages, browser ZIP,
+corresponding-source ZIP, checksums and a provenance manifest. Existing public
+versions remain unchanged; increment the package version for a new release.
 No signing credentials or updater service are configured.
 
-Read-only build jobs do not publish. Only the final main-branch publisher has
-contents-write permission; it verifies the asset set and exact source commit.
-Functional CI success does not remove the native security warnings.
+Read-only build jobs do not publish. Only the separate publisher has contents-write
+permission. It accepts same-repository main/push runs, checks required jobs and
+source ancestry, and verifies the exact asset set, source commit, uploaded sizes
+and SHA-256 digests. Functional CI success does not remove native security warnings.

@@ -1,0 +1,160 @@
+name: Publish tested downloads
+on:
+  workflow_run:
+    workflows: ['Build, test and preview release']
+    types: [completed]
+    branches: [main]
+  push:
+    branches: [main]
+    paths: ['.github/workflows/publish.yml']
+  workflow_dispatch:
+    inputs:
+      run_id:
+        description: 'Optional successful main build run ID; empty selects the previous main build.'
+        required: false
+        type: string
+permissions:
+  contents: read
+  actions: read
+concurrency:
+  group: gin-schnaps-publication
+  cancel-in-progress: false
+jobs:
+  select:
+    if: github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success'
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    outputs:
+      sha: ${{ steps.verified.outputs.sha }}
+      run: ${{ steps.verified.outputs.run }}
+    steps:
+      - name: Select only this repository's main-branch build
+        id: candidate
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          python3 - <<'PY'
+          import json,os,re,subprocess
+          repo=os.environ['GITHUB_REPOSITORY']
+          event=json.load(open(os.environ['GITHUB_EVENT_PATH']))
+          def api(path):return json.loads(subprocess.check_output(['gh','api',f'repos/{repo}/{path}'],text=True))
+          chosen=event.get('workflow_run',{}).get('id') or (event.get('inputs') or {}).get('run_id')
+          if not chosen:
+              runs=api('actions/workflows/ci.yml/runs?branch=main&event=push&per_page=20')['workflow_runs']
+              runs=[r for r in runs if r['head_sha']!=os.environ['GITHUB_SHA'] and r['conclusion'] not in ('failure','cancelled')]
+              if not runs:raise SystemExit('No eligible previous main build. A successful main build will trigger publication.')
+              chosen=runs[0]['id']
+          if not re.fullmatch(r'[0-9]+',str(chosen)):raise SystemExit('Invalid run ID.')
+          run=api(f'actions/runs/{chosen}')
+          assert run['path']=='.github/workflows/ci.yml' and run['event']=='push' and run['head_branch']=='main'
+          assert run['repository']['full_name']==repo and run['head_repository']['full_name']==repo
+          with open(os.environ['GITHUB_OUTPUT'],'a') as out:out.write(f'run={chosen}\n')
+          PY
+      - name: Require the selected build to finish successfully
+        env:
+          GH_TOKEN: ${{ github.token }}
+          BUILD_RUN: ${{ steps.candidate.outputs.run }}
+        run: gh run watch "$BUILD_RUN" --repo "$GITHUB_REPOSITORY" --exit-status --interval 15
+      - name: Check every required platform and audit job
+        id: verified
+        env:
+          GH_TOKEN: ${{ github.token }}
+          BUILD_RUN: ${{ steps.candidate.outputs.run }}
+        run: |
+          python3 - <<'PY'
+          import json,os,re,subprocess
+          repo=os.environ['GITHUB_REPOSITORY'];rid=os.environ['BUILD_RUN']
+          def api(path):return json.loads(subprocess.check_output(['gh','api',f'repos/{repo}/{path}'],text=True))
+          run=api(f'actions/runs/{rid}')
+          assert run['status']=='completed' and run['conclusion']=='success'
+          assert run['path']=='.github/workflows/ci.yml' and run['event']=='push' and run['head_branch']=='main'
+          assert run['repository']['full_name']==repo and run['head_repository']['full_name']==repo
+          assert re.fullmatch(r'[0-9a-f]{40}',run['head_sha'])
+          jobs=api(f'actions/runs/{rid}/jobs?filter=latest&per_page=100')
+          assert jobs['total_count']<=100
+          required={'Check ubuntu-latest','Check windows-latest','Check macos-latest','rust-audit',
+                    'native (ubuntu-24.04)','native (windows-latest)','native (macos-latest)','native (macos-15-intel)'}
+          for name in required:
+              matches=[j for j in jobs['jobs'] if j['name']==name]
+              assert len(matches)==1 and matches[0]['conclusion']=='success',f'Missing or unsuccessful required job: {name}'
+          with open(os.environ['GITHUB_OUTPUT'],'a') as out:out.write(f"run={rid}\nsha={run['head_sha']}\n")
+          PY
+  publish:
+    needs: select
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: write
+      actions: read
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          ref: ${{ needs.select.outputs.sha }}
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Verify source ancestry
+        env:
+          SOURCE_SHA: ${{ needs.select.outputs.sha }}
+        run: |
+          test "$(git rev-parse HEAD)" = "$SOURCE_SHA"
+          git merge-base --is-ancestor "$SOURCE_SHA" origin/main
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
+        with:
+          github-token: ${{ github.token }}
+          repository: ${{ github.repository }}
+          run-id: ${{ needs.select.outputs.run }}
+          path: downloaded
+      - name: Validate the six packages from the exact tested source
+        env:
+          SOURCE_SHA: ${{ needs.select.outputs.sha }}
+        run: env GITHUB_SHA="$SOURCE_SHA" python3 scripts/prepare-release.py
+      - name: Publish complete downloads without replacing an existing version
+        env:
+          GH_TOKEN: ${{ github.token }}
+          SOURCE_SHA: ${{ needs.select.outputs.sha }}
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import hashlib,json,os,re,subprocess
+          repo=os.environ['GITHUB_REPOSITORY'];source=os.environ['SOURCE_SHA']
+          version=json.loads(Path('package.json').read_text())['version']
+          assert re.fullmatch(r'[0-9]+\.[0-9]+\.[0-9]+',version)
+          tag='v'+version
+          def api(path,method='GET',body=None,missing=False):
+              args=['gh','api',f'repos/{repo}/{path}','--method',method]
+              if body is not None:args+=['--input','-']
+              r=subprocess.run(args,input=None if body is None else json.dumps(body),capture_output=True,text=True)
+              if r.returncode:
+                  if missing and 'HTTP 404' in r.stderr:return None
+                  raise RuntimeError(r.stderr)
+              return json.loads(r.stdout)
+          files={p.name:p for p in Path('release-output').iterdir() if p.is_file()}
+          assert len(files)==8
+          release=api(f'releases/tags/{tag}',missing=True)
+          if release and not release['draft']:
+              assert set(a['name'] for a in release['assets'])==set(files),'Existing release has an incomplete asset set.'
+              print('Version already published; existing tag and assets kept unchanged:',release['html_url'])
+              raise SystemExit(0)
+          ref=api(f'git/ref/tags/{tag}',missing=True)
+          if ref:assert ref['object']['type']=='commit' and ref['object']['sha']==source,'Existing version tag points to another source.'
+          if release:
+              assert release['target_commitish']==source and release['prerelease'],'Draft source mismatch.'
+          else:
+              release=api('releases','POST',{'tag_name':tag,'target_commitish':source,'name':f'Gin Schnaps {version} — preview',
+                          'body':Path('release-notes.md').read_text(),'draft':True,'prerelease':True})
+          existing={a['name']:a for a in release['assets']}
+          assert set(existing)<=set(files),'Unexpected draft asset.'
+          for name,p in files.items():
+              if name not in existing:subprocess.run(['gh','release','upload',tag,str(p),'--repo',repo],check=True)
+          release=api(f"releases/{release['id']}")
+          assert set(a['name'] for a in release['assets'])==set(files)
+          for asset in release['assets']:
+              p=files[asset['name']]
+              assert asset['state']=='uploaded' and asset['size']==p.stat().st_size
+              assert asset.get('digest')=='sha256:'+hashlib.sha256(p.read_bytes()).hexdigest(),'Uploaded asset checksum mismatch.'
+          release=api(f"releases/{release['id']}",'PATCH',{'draft':False})
+          assert not release['draft']
+          with open(os.environ['GITHUB_STEP_SUMMARY'],'a') as out:
+              out.write(f"## Downloads published\n\n[{tag}]({release['html_url']})\n\nExact tested source: `{source}`. All eight asset sizes and SHA-256 digests verified.\n")
+          print(release['html_url'])
+          PY
