@@ -1,0 +1,226 @@
+[
+  {
+    "file": "linear-01.gb",
+    "location": "1..12",
+    "topology": "linear",
+    "exact": true,
+    "sha256": "51f286f0fe90db89d81d1ab61010c507b46f8e2be12bfa3b138932645ad6abbb"
+  },
+  {
+    "file": "linear-02.gb",
+    "location": "complement(1..12)",
+    "topology": "linear",
+    "exact": true,
+    "sha256": "85835e40073627293c31dcede6e841eb8ae11544ab198e09959fb52a21e0b93c"
+  },
+  {
+    "file": "linear-03.gb",
+    "location": "join(1..3,7..9,10..12)",
+    "topology": "linear",
+    "exact": true,
+    "sha256": "780b059e969d23fa31ddab160ff9a9a7403316d1841adb191be1e714050ab03d"
+  },
+  {
+    "file": "linear-04.gb",
+    "location": "complement(join(1..3,7..9,10..12))",
+    "topology": "linear",
+    "exact": true,
+    "sha256": "290a54e6039f181cd3456913a9b1e7844bd82034fbdf3ea3580068d2165a226f"
+  },
+  {
+    "file": "linear-05.gb",
+    "location": "join(90..120,1..12)",
+    "topology": "linear",
+    "exact": true,
+    "sha256": "a1a3c6e31a13d07955016a806f223fb9f48e1eed3d54387395effa691d28025d"
+  },
+  {
+    "file": "linear-06.gb",
+    "location": "complement(join(90..120,1..12))",
+    "topology": "linear",
+    "exact": true,
+    "sha256": "0c1de6ac45e6cd15de88c432b3dceda6a8ee8a756f41ac103eb0c24623ee6f4a"
+  },
+  {
+    "file": "linear-07.gb",
+    "location": "join(20..25,1..8,100..110)",
+    "topology": "linear",
+    "exact": true,
+    "sha256": "cc4cbb58404c082ce7a87024e202cc3ac71ead973bf4bd05fb499b8b675f4948"
+  },
+  {
+    "file": "linear-08.gb",
+    "location": "join(complement(40..50),complement(10..20))",
+    "topology": "linear",
+    "exact": true,
+    "sha256": "fdaef748e22d259d804743038744f8c7f50657713494c156423a5802fc9ecf57"
+  },
+  {
+    "file": "linear-09.gb",
+    "location": "<2..20",
+    "topology": "linear",
+    "exact": false,
+    "sha256": "817b5ae8874b72693d216087f310d2c0a67857721e6ee24ee94eb65d99d55712"
+  },
+  {
+    "file": "linear-10.gb",
+    "location": "complement(2..>20)",
+    "topology": "linear",
+    "exact": false,
+    "sha256": "888232c9c8792472b93961ed64ee56024714a27bce58d9cd6d756ce6fab96baf"
+  },
+  {
+    "file": "linear-11.gb",
+    "location": "15^16",
+    "topology": "linear",
+    "exact": false,
+    "sha256": "9b2e774e174a17f13dec98e7d4e6bd201d9285f6d71cd61328e91baf28f35239"
+  },
+  {
+    "file": "linear-12.gb",
+    "location": "J00194.1:500..600",
+    "topology": "linear",
+    "exact": false,
+    "sha256": "e86955194025b8dfc12dab991081fe55a151cae47b4655c11bbecf6adec70616"
+  },
+  {
+    "file": "linear-13.gb",
+    "location": "order(2..8,18..23)",
+    "topology": "linear",
+    "exact": false,
+    "sha256": "473698c717db7576a5b975829cf1bf3909b306dfb9c1f94750af58261e796957"
+  },
+  {
+    "file": "linear-14.gb",
+    "location": "complement(order(2..8,18..23))",
+    "topology": "linear",
+    "exact": false,
+    "sha256": "49dab90c3787211d4d59d83512c4e4c70ebe702270227c4ad071ee1cc6d81a57"
+  },
+  {
+    "file": "linear-15.gb",
+    "location": "join(2..8,complement(18..23))",
+    "topology": "linear",
+    "exact": false,
+    "sha256": "d0a0855367399e69e5df30141fbe1a99dc0f1011cd48f1ccfd8edde47a68b617"
+  },
+  {
+    "file": "linear-16.gb",
+    "location": "join(2..8,5..12)",
+    "topology": "linear",
+    "exact": false,
+    "sha256": "662b6e28c05e8bb4b5767b2847c93394a33aac499ed501a2c936bf9433110c7b"
+  },
+  {
+    "file": "circular-01.gb",
+    "location": "1..12",
+    "topology": "circular",
+    "exact": true,
+    "sha256": "8a05103fa9287292b281890971db5295a3bebe59e809dad5d6d2b60351048871"
+  },
+  {
+    "file": "circular-02.gb",
+    "location": "complement(1..12)",
+    "topology": "circular",
+    "exact": true,
+    "sha256": "63a36500b99df0f1cdb5af7758acbf0c54562b3da630c2aee2a634f910c88bc1"
+  },
+  {
+    "file": "circular-03.gb",
+    "location": "join(1..3,7..9,10..12)",
+    "topology": "circular",
+    "exact": true,
+    "sha256": "7fb4bb262afab38636a4781342e3f6490eb2c3146b22db8ac2d41cc9eab4aad1"
+  },
+  {
+    "file": "circular-04.gb",
+    "location": "complement(join(1..3,7..9,10..12))",
+    "topology": "circular",
+    "exact": true,
+    "sha256": "80f6254a067bab13a030feef846d61cde5430c7b68ca2af65c38ec6c0738abc5"
+  },
+  {
+    "file": "circular-05.gb",
+    "location": "join(90..120,1..12)",
+    "topology": "circular",
+    "exact": true,
+    "sha256": "6370e56f310d9e124c70d4b49485b0d8ec27c57e31cc114d3992885f4c871e9f"
+  },
+  {
+    "file": "circular-06.gb",
+    "location": "complement(join(90..120,1..12))",
+    "topology": "circular",
+    "exact": true,
+    "sha256": "5953e377c39354b68dcf1910e4c6ab8dc70815f06b0d6e12c68bd7805abbc2b6"
+  },
+  {
+    "file": "circular-07.gb",
+    "location": "join(20..25,1..8,100..110)",
+    "topology": "circular",
+    "exact": true,
+    "sha256": "227c30f8215ed8a5d8b352f87e6752c76aa9134eec04a73d740aef99c70b9e7b"
+  },
+  {
+    "file": "circular-08.gb",
+    "location": "join(complement(40..50),complement(10..20))",
+    "topology": "circular",
+    "exact": true,
+    "sha256": "7edd3481dd3265dc2f91a96288b8feac3463aabdf6b4adfeb88e474a72d751ac"
+  },
+  {
+    "file": "circular-09.gb",
+    "location": "<2..20",
+    "topology": "circular",
+    "exact": false,
+    "sha256": "654297f8c10fc8d7daaa651b45710790625f0a8a89792c863028c2c23ad7a278"
+  },
+  {
+    "file": "circular-10.gb",
+    "location": "complement(2..>20)",
+    "topology": "circular",
+    "exact": false,
+    "sha256": "bd6863264ce72e876e386e9e7308a8086f3d5913e72cbaba5ac755e10fa7aadd"
+  },
+  {
+    "file": "circular-11.gb",
+    "location": "15^16",
+    "topology": "circular",
+    "exact": false,
+    "sha256": "93a2dfaecfb51db7fd7c1c1767fe203d1b603c6f6bf93bd70ba0d60a7d8266cb"
+  },
+  {
+    "file": "circular-12.gb",
+    "location": "J00194.1:500..600",
+    "topology": "circular",
+    "exact": false,
+    "sha256": "4c8364e52ab63daa20d28a2bcf6034f22cbb9ea2945a6993a74582292b492e10"
+  },
+  {
+    "file": "circular-13.gb",
+    "location": "order(2..8,18..23)",
+    "topology": "circular",
+    "exact": false,
+    "sha256": "8733e82e674fe8cb3164a1668a11df840fa735488f357a5768950b75aa44dd24"
+  },
+  {
+    "file": "circular-14.gb",
+    "location": "complement(order(2..8,18..23))",
+    "topology": "circular",
+    "exact": false,
+    "sha256": "a23a56c3f1ba705c42a15bc6152124ff03ca9fa2ddd0d9f741a5441bf5203b1d"
+  },
+  {
+    "file": "circular-15.gb",
+    "location": "join(2..8,complement(18..23))",
+    "topology": "circular",
+    "exact": false,
+    "sha256": "dbf8d22301f60683bbd725dd0725253d51c4b0e17156dba85ba6558dd431839b"
+  },
+  {
+    "file": "circular-16.gb",
+    "location": "join(2..8,5..12)",
+    "topology": "circular",
+    "exact": false,
+    "sha256": "061af83f4caf579e9a76e7b80f338d65602bfa728ee0293e73eb10880ae270e2"
+  }
+]

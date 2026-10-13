@@ -1,0 +1,51 @@
+{
+  "name": "gin-schnaps",
+  "version": "0.8.1",
+  "private": true,
+  "type": "module",
+  "license": "GPL-3.0-or-later",
+  "description": "Gin Schnaps: local DNA and plasmid workbench.",
+  "scripts": {
+    "build": "node scripts/build.mjs",
+    "typecheck": "tsc --noEmit",
+    "test": "node scripts/test.mjs",
+    "check": "npm run test:branding && npm run typecheck && npm test && npm run test:security && npm run build && npm run security:inventory",
+    "start": "node scripts/serve.mjs",
+    "test:browser": "python3 tests/browser.py",
+    "test:interop": "python3 tests/interoperability.py",
+    "test:file-oracle": "python3 tests/file-oracle.py",
+    "security:inventory": "node scripts/security-inventory.mjs",
+    "test:security": "node --test tests/dependency-security.test.mjs",
+    "test:consolidation": "python3 tests/consolidation.py",
+    "test:workbench": "python3 tests/workbench.py",
+    "test:documents": "python3 tests/documents-primers.py && python3 tests/editor-review.py",
+    "test:documents-oracle": "python3 tests/documents-oracle.py",
+    "test:branding": "node --test tests/branding.test.mjs"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "dependencies": {
+    "react": "18.3.1",
+    "react-dom": "18.3.1",
+    "@teselagen/ove": "0.8.42",
+    "@teselagen/bio-parsers": "0.4.37",
+    "events": "3.3.0",
+    "shortid": "file:vendor/display-id"
+  },
+  "devDependencies": {
+    "@types/node": "22.15.30",
+    "@types/react": "18.3.18",
+    "@types/react-dom": "18.3.5",
+    "typescript": "5.8.3",
+    "esbuild": "0.25.12"
+  },
+  "overrides": {
+    "lodash": "4.18.1",
+    "lodash-es": "4.18.1",
+    "jsondiffpatch": "0.7.6",
+    "fast-xml-parser": "5.7.0",
+    "nanoid": "5.1.16",
+    "shortid": "$shortid"
+  }
+}

@@ -1,0 +1,75 @@
+{
+  "schemaVersion": 2,
+  "id": "demo-analysis-360",
+  "name": "pAnalyse_360",
+  "description": "Séquence et annotations synthétiques, arbitraires, sans fonction biologique validée. Contrôle logiciel seulement.",
+  "sequence": "CTTCTTCCATACTAAATTTTTCCGATGTGGGTGGCTGCTGCTGCTGCTGCTGCTGCTTAATGAGGCACCTTTCCTTGACACCGGCGTACACTTTGGCCGGGAATTCTGCTGTCGGTATAAACGCACGTTATGGACGGCCGCAACTAACTCTTTGAGCGGCGCAGCCGTAGAAGGTGGTTGGGGGGCTTGCGGTCAGGGCTCGAATGCGAATTTAGGTACAGGATCCACCATGTATGTTACCGTCCAATTTCAACAGGTCGCGCATAGACGGCGTTTGGAGGAGTTCTACGTATGGTAATTACGTCATACTTGGCCCGTATGGTCTCGATCATAATATTTCTTATTCTTCTTCTTCTTCTT",
+  "topology": "circular",
+  "features": [
+    {
+      "id": "cds-plus",
+      "name": "CDS_demo_plus",
+      "type": "CDS",
+      "strand": 1,
+      "color": "#6CCD72",
+      "segments": [
+        {
+          "start": 30,
+          "end": 60
+        }
+      ],
+      "qualifiers": [
+        {
+          "key": "codon_start",
+          "value": "1"
+        },
+        {
+          "key": "transl_table",
+          "value": "11"
+        },
+        {
+          "key": "translation",
+          "value": "MAAAAAAAA"
+        }
+      ],
+      "archivedQualifiers": [],
+      "reviewRequired": false
+    },
+    {
+      "id": "cds-origin",
+      "name": "CDS_demo_origine",
+      "type": "CDS",
+      "strand": -1,
+      "color": "#6CCD72",
+      "segments": [
+        {
+          "start": 340,
+          "end": 360
+        },
+        {
+          "start": 0,
+          "end": 10
+        }
+      ],
+      "qualifiers": [
+        {
+          "key": "codon_start",
+          "value": "1"
+        },
+        {
+          "key": "transl_table",
+          "value": "11"
+        },
+        {
+          "key": "translation",
+          "value": "MEEEEEEEE"
+        }
+      ],
+      "archivedQualifiers": [],
+      "reviewRequired": false
+    }
+  ],
+  "provenance": "synthetic-demo",
+  "sourceArchive": null,
+  "history": []
+}

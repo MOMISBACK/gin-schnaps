@@ -1,0 +1,26 @@
+# File formats and compatibility
+
+The native format is `.sg.json`, schema 4. Source archives are not current modified
+files. Every lossy conversion is disclosed; a successful import does not imply
+that all source semantics are supported.
+
+| Format/data | Active support | Not active / limitation |
+|---|---|---|
+| FASTA | DNA sequence/name, explicit normalization; multi-record | No topology/annotations inferred; linear default reported |
+| Native v1/v2/v3 | Migration to v4; prior supported fields preserved | Empty library/no PCR recipe added, no invented past primers |
+| Native v4 | Full scientific document, oligos/recipe, descriptors, source/archive/history | Session undo stacks and computed results are not serialized |
+| GenBank exact locations | Simple, complement, homogeneous nonoverlapping joins, declared part order | Max 128 parts; DNA splicing of disjoint features blocked |
+| GenBank unresolved descriptors | `<`, `>`, remote accession.version, between-base, order, mixed/overlapping join; preserve and export | No fabricated projection, translation or sequence transformation |
+| Other GenBank constructs | Explicit refusal | No one-of/within-range/general INSDC completeness; explicit DNA/topology LOCUS required |
+| .dna DNA/features | Uncompressed dsDNA; topology; exact standard segments, strands, qualifiers; joined parts | No gap segments, bidirectional features, RNA/uracil, compressed/protein/ssDNA |
+| .dna full primers | Full Primer sequence/name, literal description in active oligo library | Imported Tm/binding/chemistry remain archive-only; no inferred tail/recipe |
+| .dna history/traces | Byte-identical original archive and block report | Not converted to active experiment history/chromatograms |
+| Current GenBank export | Current sequence/exact joins or unresolved descriptor, supported qualifiers | Library/PCR and native metadata omitted with explicit warning; names/colors may use conventions |
+| Original .dna export | Restores original source bytes | Not the edited document; no modified .dna writer |
+| Oligo FASTA export | Full 5′→3′ oligo sequences | Notes, boundaries, recipe and provenance require native file |
+
+Saved PCR uses the existing exact model only; preserving an IUPAC reagent does
+not permit ambiguous PCR/Tm calculations. See [user guide](USER_GUIDE.md),
+[development and tests](DEVELOPMENT.md), and the individual block/conversion reports.
+Original files and notes can contain sensitive data; source archives and exported
+reports must not be published unintentionally.

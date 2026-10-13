@@ -1,0 +1,1 @@
+{"name":"@gin-schnaps/display-id","version":"1.0.0","main":"index.cjs","license":"GPL-3.0-or-later","description":"Narrow adapter for TeselaGen display IDs; not the upstream shortid package"}

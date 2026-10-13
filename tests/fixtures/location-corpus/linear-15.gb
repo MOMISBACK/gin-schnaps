@@ -1,0 +1,12 @@
+LOCUS       CORPUS15                 120 bp    DNA     linear   SYN 13-OCT-2026
+DEFINITION  Synthetic location stress test; no biological validation.
+FEATURES             Location/Qualifiers
+     CDS             join(2..8,complement(18..23))
+                     /label="linear-15"
+                     /transl_table=11
+                     /note="First note"
+                     /note="Second note"
+ORIGIN
+        1 atggccgaat aacgtcagat ccgatcgagg ccatggctaa gttagcccta aatgcgtacc
+       61 gaatggccga ataacgtcag atccgatcga ggccatggct aagttagccc taaatgcgta
+//

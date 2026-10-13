@@ -1,0 +1,19 @@
+{
+  "identifier": "desktop",
+  "description": "Bounded file operations through native-chosen paths and opaque session tokens; no generic filesystem, dialog IPC, shell or HTTP permission. IO-test command is not compiled in production.",
+  "windows": [
+    "main"
+  ],
+  "permissions": [
+    "allow-probe-report",
+    "allow-desktop-open",
+    "allow-desktop-save",
+    "allow-desktop-export",
+    "allow-desktop-release",
+    "allow-desktop-info",
+    "allow-desktop-recovery-read",
+    "allow-desktop-recovery-write",
+    "allow-desktop-close",
+    "allow-io-test-control"
+  ]
+}
