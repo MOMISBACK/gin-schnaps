@@ -2,9 +2,6 @@
 
 ## 0.8.3 — DNA clipboard and native file resilience (preview)
 
-- Integrate the prepared, user-triggered DNA copy/paste between documents and
-  windows: bounded plain DNA or one FASTA record, explicit insert/replace,
-  reverse complement, source unchanged and one-step Undo. Features are not copied.
 - Preserve native lock coordination for ordinary paths; avoid overflowing lock-file
   names for long documents; reject non-Unicode paths explicitly.
 - Recheck read-only state before publication. Post-publication read-back errors
@@ -13,13 +10,11 @@
   plus Unicode, backup, size-limit, conflict and acknowledgement tests.
 - Add a human installation/OS-picker acceptance checklist. Known Linux GLib,
   publisher-signing and old-hardware limitations are not claimed resolved.
-
 - Add Copy/Paste between open documents using keyboard shortcuts, native-menu event
   paths or an explicit Paste dialog. Insert, replace, append or create a document;
   optional reverse complement, single-record FASTA validation and one-step undo.
   Base-only transfer does not silently copy annotations. Optional clipboard read
   refusal has a keyboard/manual fallback; no background polling or clipboard storage.
-
 - Fix a selection-field synchronization race after switching document tabs; rapid
   coordinate entry no longer restores an older start position.
 

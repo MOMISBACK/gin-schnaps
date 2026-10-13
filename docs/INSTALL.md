@@ -27,8 +27,9 @@ Tests run on modern hosted Macs. Keep the browser version available on older Mac
 
 ## Browser version — the simplest fallback
 
-Download `gin-schnaps-0.8.1-browser.zip`, extract the entire ZIP, then open
-`gin-schnaps-0.8.1/index.html` in your browser. The file may appear as **index**
+Download the asset ending in **`-browser.zip`** from the selected release, extract
+the entire ZIP, then open **`index.html`** inside its `gin-schnaps-VERSION` folder.
+`VERSION` is the downloaded release number. The file may appear as **index**
 when filename extensions are hidden. Use **Open With** if it opens in a text editor.
 Do not open it from inside the compressed archive. No localhost server or internet
 connection is required after download.
@@ -61,7 +62,7 @@ warning in [SECURITY.md](../SECURITY.md) remains unresolved.
 
 First export important documents as `.sg.json` in your current application. Open
 those files in Gin Schnaps, verify sequences and annotations, then use **Save As**
-on desktop or **Native** in the browser. Existing schema 1–4 files are supported
+on desktop or **Native** in the browser. Existing schema 1–5 files are supported
 within the documented limits. The extension `.sg.json` is deliberately retained.
 
 Gin Schnaps uses a new application identifier and recovery namespace. It does not

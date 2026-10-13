@@ -4,7 +4,7 @@ An open-source, local-first DNA and plasmid workbench for macOS, Windows and Lin
 View annotated maps, inspect and edit sequences, manage oligonucleotides, and run
 basic translation, restriction and theoretical PCR analyses. The interface is in English.
 
-**Version 0.8.1 is a development preview, not a laboratory-validated release.**
+**Gin Schnaps is a development preview, not a laboratory-validated release.**
 Keep independent backups. Desktop packages are not signed by a trusted publisher.
 
 Source on `main` may be newer than the public preview. Download only an asset from a published release.
@@ -15,15 +15,16 @@ Source on `main` may be newer than the public preview. Download only an asset fr
 
 The table below describes the package types. Select the version actually listed on the releases page; source changes are not available until their release is published. The 0.8.3 clipboard and file-safety changes are documented in [CHANGELOG](CHANGELOG.md).
 
-Choose a file from **Assets** on that release page:
+Choose a file from **Assets** on that release page. In the table, `VERSION` means
+the number printed on the release you selected (not text to type into a URL):
 
 | Your system | Download | Start |
 |---|---|---|
-| Mac with an Intel processor | `gin-schnaps-0.8.1-macos-intel.dmg` | Open the disk image; drag **Gin Schnaps.app** to **Applications**. |
-| Mac with Apple Silicon | `gin-schnaps-0.8.1-macos-arm64.dmg` | Open the disk image; drag **Gin Schnaps.app** to **Applications**. |
-| Windows x64 | `gin-schnaps-0.8.1-windows-x64.zip` | Extract the ZIP; open **Gin Schnaps.exe**. WebView2 is required. |
-| Any system with a compatible browser | `gin-schnaps-0.8.1-browser.zip` | Extract the ZIP; open **index.html**. No server or development tools. |
-| Ubuntu 24.04-compatible Linux x64 | `gin-schnaps-0.8.1-linux-x64.tar.gz` | Extract and launch **gin-schnaps**; GTK3/WebKitGTK 4.1 required. Experimental; see the security note below. |
+| Mac with an Intel processor | `gin-schnaps-VERSION-macos-intel.dmg` | Open the disk image; drag **Gin Schnaps.app** to **Applications**. |
+| Mac with Apple Silicon | `gin-schnaps-VERSION-macos-arm64.dmg` | Open the disk image; drag **Gin Schnaps.app** to **Applications**. |
+| Windows x64 | `gin-schnaps-VERSION-windows-x64.zip` | Extract the ZIP; open **Gin Schnaps.exe**. WebView2 is required. |
+| Any system with a compatible browser | `gin-schnaps-VERSION-browser.zip` | Extract the ZIP; open **index.html**. No server or development tools. |
+| Ubuntu 24.04-compatible Linux x64 | `gin-schnaps-VERSION-linux-x64.tar.gz` | Extract and launch **gin-schnaps**; GTK3/WebKitGTK 4.1 required. Experimental; see the security note below. |
 
 **GitHub's “Code → Download ZIP” and the “Source code” assets are for developers.**
 They are not the ready-to-run application. Older Macs can use the browser package;
