@@ -112,3 +112,38 @@ to the form. Library edits preserve a separate manual draft. Loading a stored se
 or replacing form fields from the library requires consent when a draft exists.
 Browser leave prompts are best-effort; forced termination cannot be intercepted.
 Recovery still contains committed documents, not uncommitted form fields.
+
+## Copy and paste between documents
+
+Open both files. Select a region in the source Map or Sequence view (the Selection
+coordinates also work, including across a circular origin). Use **Copy** or
+**Cmd+C** on Mac / **Ctrl+C** on Windows/Linux. **Copy RC** copies the reverse
+complement without changing the source.
+
+Switch to the destination tab, select a region or base, then use **Cmd+V / Ctrl+V**.
+The **Paste DNA** dialog receives the clipboard text. Select **Insert before a base**
+or **Replace a region**, review the 1-based coordinates and the preview, then choose
+**Apply paste**. **Append at end** sets the insertion position to length + 1.
+The **Create a new document** option leaves existing documents untouched and lets
+you choose its name and topology. Cancel changes nothing; an applied paste is one
+undoable edit. Save/Native export is still needed to keep the destination changes.
+
+The **Paste…** toolbar button also opens the dialog. Paste into its DNA box, or use
+**Read clipboard**. Some browsers/WebViews deny that optional read: keyboard paste
+into the box still works. **Use last copied DNA** is an explicit alternative that
+uses this application's session memory, not a fresh system clipboard read. It is
+never used silently; the temporary copy is not saved in documents or recovery.
+Clipboard contents may be visible to other applications, so treat copied DNA as
+sensitive when appropriate.
+
+Only bases are transferred — not source features, oligos, source archives or history.
+Existing destination annotations use the same adjustment/review rules as Edit.
+Plain DNA and one FASTA record are accepted. Whitespace and lowercase are normalized
+with a notice. Multiple FASTA records, digits, gaps, non-DNA characters and excess
+length are rejected, never silently stripped or truncated. The limit remains
+100,000 bases in the result. Pasting into documents with disjoint or unresolved
+features remains blocked when the shared edit engine cannot safely update them.
+An explicit **Reverse-complement pasted DNA** option changes the pasted bases only.
+
+Normal text fields keep their ordinary Copy/Paste behavior. Direct free typing
+into the displayed nucleotide rows and cross-document Cut are not implemented.

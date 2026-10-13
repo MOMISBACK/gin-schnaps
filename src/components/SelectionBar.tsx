@@ -1,11 +1,13 @@
-import React, { useEffect, useState } from 'react';
+import React, { useLayoutEffect, useState } from 'react';
 import { fromUserRange, toUserRange, type Selection, type SequenceDocument } from '../domain/model';
 export function SelectionBar({ doc, selection, onSelect, onError }: {
   doc: SequenceDocument; selection: Selection; onSelect: (s: Selection) => void; onError: (message: string) => void;
 }) {
   const range = toUserRange(selection, doc.sequence.length);
-  const [start, setStart] = useState('1'), [end, setEnd] = useState('1');
-  useEffect(() => { if (range) { setStart(String(range.start)); setEnd(String(range.end)); } }, [range?.start, range?.end]);
+  const [start, setStart] = useState(String(range?.start ?? 1)), [end, setEnd] = useState(String(range?.end ?? 1));
+  // Synchronize before paint: a delayed effect after a tab switch must not
+  // overwrite coordinates the user has already started typing.
+  useLayoutEffect(() => { if (range) { setStart(String(range.start)); setEnd(String(range.end)); } }, [range?.start, range?.end]);
   return <form className="selection-bar" onSubmit={event => {
     event.preventDefault();
     try { onSelect(fromUserRange(Number(start), Number(end), doc.sequence.length, doc.topology === 'circular')); }

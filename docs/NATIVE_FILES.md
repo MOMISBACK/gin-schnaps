@@ -1,6 +1,6 @@
 # Native files, recovery and safety boundaries
 
-Version 0.8.2 retains the standalone English HTML and TypeScript scientific engine.
+Version 0.8.3 retains the standalone English HTML and TypeScript scientific engine.
 The Rust/Tauri host now offers native Open, Save, Save As and export dialogs.
 It is a development preview, not a signed/notarized laboratory release.
 
@@ -85,3 +85,27 @@ Interchange paths opened during a session remain protected from generic exports 
 The 0.8.2 native writer accepts the current schema-5 envelope after frontend
 validation. Older input schemas migrate before saving. The scientific engine is
 unchanged; journal retention and draft guards are document/UI changes.
+
+## File reliability improvements in 0.8.3
+
+Legal long destination names no longer overflow the per-component name limit solely
+because a transaction/lock suffix was appended: long lock names use a bounded hash.
+Ordinary lock names remain unchanged for coordination with earlier app versions.
+Unicode/spaces round-trip; non-Unicode paths are refused rather than lossily aliased.
+
+A destination that becomes read-only during preparation is checked again before
+publication. Read-back errors after publication explicitly report that the file was
+replaced but could not be confirmed. They do not issue a save acknowledgement.
+Keep the document open and use Save As with another name in that case.
+
+The internal writer has seven observable stage boundaries for unit testing, with no
+runtime fault switch or exported command. Optimized tests cover partial-write/sync/
+prepublication failure, late external writes/deletion/permission change, failures
+following publication, read-back corruption, backup failure, oversized documents,
+and actual Unicode scratch-file round trips. Each successful job uploads
+`native-save-report.json`; compilation alone is not validation. These injected errors
+are not proof of power-loss durability or universal disk-full handling.
+
+Human OS-picker and old-hardware acceptance remains separate:
+[acceptance checklist](INSTALLATION_CHECKLIST.md). Signing/notarization and the known
+Linux dependency warning remain open; this patch is not a desktop security clearance.

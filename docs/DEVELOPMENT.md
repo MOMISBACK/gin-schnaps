@@ -87,3 +87,15 @@ without authentication by a separate read-only job. Repository-level branch rule
 and release immutability still require maintainer setup: see [MAINTAINER.md](MAINTAINER.md).
 Only the publisher receives contents-write permission. No signing credentials or
 updater service are configured. Tests do not remove native security warnings.
+
+## Clipboard regression tests
+
+`npm run test:clipboard` exercises real user-triggered Copy and Paste in Chromium,
+including two documents, a circular source, undo, fallback permissions and ordinary
+text fields. Synthetic ClipboardEvent checks cover the menu event path only, not
+actual OS menu clicks. The native IO driver separately checks paste/save/undo in
+system WebViews with its fixed test picker. No new native clipboard permission is
+exposed. Browser API references: [clipboard events](https://developer.mozilla.org/en-US/docs/Web/API/Clipboard_API)
+and [React synchronous browser integration](https://react.dev/reference/react-dom/flushSync).
+The latter is used only to focus the paste textarea before the browser's default
+keyboard paste; it is not used for regular sequence rendering or calculation.

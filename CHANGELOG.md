@@ -1,6 +1,24 @@
 # Changelog
 
-## 0.8.2 — corrective patch (unreleased)
+## 0.8.3 — DNA clipboard and native file resilience (preview)
+
+- Preserve native lock coordination for ordinary paths; avoid overflowing lock-file
+  names for long documents; reject non-Unicode paths explicitly.
+- Recheck read-only state before publication. Post-publication read-back errors
+  explain that replacement occurred without falsely acknowledging a save.
+- Add optimized, real scratch-file regression tests at seven internal write stages,
+  plus Unicode, backup, size-limit, conflict and acknowledgement tests.
+- Add a human installation/OS-picker acceptance checklist. Known Linux GLib,
+  publisher-signing and old-hardware limitations are not claimed resolved.
+- Add Copy/Paste between open documents using keyboard shortcuts, native-menu event
+  paths or an explicit Paste dialog. Insert, replace, append or create a document;
+  optional reverse complement, single-record FASTA validation and one-step undo.
+  Base-only transfer does not silently copy annotations. Optional clipboard read
+  refusal has a keyboard/manual fallback; no background polling or clipboard storage.
+- Fix a selection-field synchronization race after switching document tabs; rapid
+  coordinate entry no longer restores an older start position.
+
+## 0.8.2 — corrective patch
 
 - Fix the 501st-operation editing blockade. A rolling journal retains at most
   500 recent descriptions, with an approximately 512 kB UTF-8 budget on append.

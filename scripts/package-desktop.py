@@ -8,7 +8,7 @@ system=platform.system();arch=platform.machine();version=json.loads((ROOT/'packa
 binary=ROOT/'desktop/target/release'/('gin-schnaps.exe' if system=='Windows' else 'gin-schnaps')
 assert binary.is_file()
 stage=OUT/'stage';shutil.rmtree(stage,ignore_errors=True);stage.mkdir()
-startup="""GIN SCHNAPS 0.8.2 — DESKTOP PREVIEW
+startup="""GIN SCHNAPS 0.8.3 — DESKTOP PREVIEW
 
 Save writes the complete .sg.json document. Save As selects a new destination.
 Interchange inputs (.dna, GenBank, FASTA) are never overwritten by Save.

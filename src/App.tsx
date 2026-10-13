@@ -1,3 +1,7 @@
+import { MAX_PASTE_CHARACTERS } from './domain/sequence-paste';
+import { flushSync } from 'react-dom';
+import { PasteDialog, type CopiedDNA } from './components/PasteDialog';
+import { hasSelectedText, isTextEntry, writeClipboardText } from './adapters/clipboard';
 import { PcrDraftDialog } from './components/PcrDraftDialog';
 import { hasPcrDraft, pcrDraftError } from './domain/pcr-drafts';
 import { executeCommand } from './domain/commands';
@@ -95,6 +99,8 @@ function downloadFile(name:string,content:string|Uint8Array,mime='application/js
 }
 export default function App() {
   const [workspace, dispatch] = useReducer(workspaceReducer, undefined, () => workspaceReducer(emptyWorkspace, { type: 'open', documents: [createDemo()], source: "Built-in synthetic example" }));
+  const [copiedDNA, setCopiedDNA] = useState<CopiedDNA | null>(null);
+  const [pasteDialog, setPasteDialog] = useState<{ key: number | null; doc?: SequenceDocument; selection: Selection; text: string } | null>(null);
   const [documentDialog, setDocumentDialog] = useState<DocumentMode | null>(null);
   const [searchOpen, setSearchOpen] = useState(false);
   const [searchInputs, setSearchInputs] = useState<Record<number, SearchOptions>>({});
@@ -254,24 +260,65 @@ export default function App() {
     if (!entry?.selection) return;
     const selected = selectedSequence(entry.doc, entry.selection);
     const text = complementary ? reverseComplement(selected) : selected;
+    setCopiedDNA({ sequence: text, sourceName: entry.doc.name });
     try {
-      if (navigator.clipboard && window.isSecureContext) await navigator.clipboard.writeText(text);
-      else {
-        const area = document.createElement('textarea'); area.value = text; area.className = 'clipboard-helper'; document.body.appendChild(area);
-        try { area.select(); if (!document.execCommand('copy')) throw new Error("The browser refused clipboard access."); } finally { area.remove(); }
-      }
-      setMessage({ text: `${number(text.length)} bases copied${complementary ? " as reverse complement (5′→3′)" : " in the reference-strand direction"}.`, error: false });
-    } catch { notifyError("The browser refused to copy. Try the Copy button or check clipboard permissions."); }
+      await writeClipboardText(text);
+      setMessage({ text: `${number(text.length)} bases copied${complementary ? " as reverse complement (5′→3′)" : " in the reference-strand direction"}. Source annotations are not copied.`, error: false });
+    } catch {
+      notifyError('System clipboard access was refused. The bases remain in session memory: switch documents, open Paste and choose Use last copied DNA.');
+    }
+  };
+  const openPaste = (text = '') => {
+    if (importBusy.current || nativeBusy || document.querySelector('[role="dialog"]')) return;
+    if (text.length > MAX_PASTE_CHARACTERS) { notifyError('Clipboard text exceeds 400,000 characters. Nothing was pasted; open a sequence file instead.'); return; }
+    const current = workspaceRef.current.documents.find(d => d.key === workspaceRef.current.active);
+    setMessage(null); setPendingExport(null);
+    setPasteDialog({ key: current?.key ?? null, doc: current?.doc, selection: current?.selection ?? null, text });
+  };
+  const applyPaste = (result: CommandResult) => {
+    if (!pasteDialog || pasteDialog.key === null) return;
+    const target = workspaceRef.current.documents.find(d => d.key === pasteDialog.key);
+    if (!target || target.doc !== pasteDialog.doc) { notifyError('The destination changed while the paste was open. Cancel and reopen Paste. Nothing was applied.'); return; }
+    dispatch({ type: 'commit', key: target.key, doc: result.doc, selection: result.selection });
+    setPasteDialog(null);
+    setMessage({ text: 'Pasted bases applied. Undo is available. Save or export the destination to keep the change. ' + result.warnings.join(' '), error: false });
+  };
+  const createPastedDocument = (doc: SequenceDocument) => {
+    if (workspaceRef.current.documents.length >= MAX_OPEN_DOCUMENTS) { notifyError('Maximum open documents reached. Close a document first.'); return; }
+    dispatch({ type: 'open', documents: [doc], source: 'Pasted DNA (bases only)', dirty: true });
+    setPasteDialog(null);
   };
   useEffect(() => {
+    // Native Edit > Copy/Paste and browser context-menu actions use the same path.
+    // Text fields and selected prose retain the operating system's usual behavior.
+    const copy = (event: ClipboardEvent) => {
+      if (event.defaultPrevented || isTextEntry(event.target) || hasSelectedText() || document.querySelector('[role="dialog"]') || !entry?.selection || !event.clipboardData) return;
+      const text = selectedSequence(entry.doc, entry.selection);
+      event.preventDefault(); event.clipboardData.clearData(); event.clipboardData.setData('text/plain', text);
+      setCopiedDNA({ sequence: text, sourceName: entry.doc.name });
+    };
+    const paste = (event: ClipboardEvent) => {
+      if (event.defaultPrevented || isTextEntry(event.target) || document.querySelector('[role="dialog"]') || importBusy.current || nativeBusy || !event.clipboardData) return;
+      event.preventDefault(); openPaste(event.clipboardData.getData('text/plain'));
+    };
+    window.addEventListener('copy', copy); window.addEventListener('paste', paste);
+    return () => { window.removeEventListener('copy', copy); window.removeEventListener('paste', paste); };
+  });
+  useEffect(() => {
     const keydown = (event: KeyboardEvent) => {
-      if (documentDialog || dialog || exportOpen || recoveryOpen || quitOpen || nativeBusy || draftCloseKey !== null) { if ((event.metaKey || event.ctrlKey) && ['o','s','n','f'].includes(event.key.toLowerCase())) event.preventDefault(); return; }
+      if (documentDialog || dialog || pasteDialog || exportOpen || recoveryOpen || quitOpen || nativeBusy || draftCloseKey !== null || document.querySelector('[role="dialog"]')) { if ((event.metaKey || event.ctrlKey) && ['o','s','n','f'].includes(event.key.toLowerCase())) event.preventDefault(); return; }
       if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'f' && entry) { event.preventDefault(); setSearchOpen(true); }
       if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'n') { event.preventDefault(); setDocumentDialog('new'); }
-      const editing = event.target instanceof HTMLInputElement || event.target instanceof HTMLTextAreaElement;
+      const editing = isTextEntry(event.target);
+      if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'v' && !editing && !importBusy.current) {
+        // Focus a real textarea before the browser performs its default paste.
+        // No background clipboard read, permission request or synthetic paste.
+        flushSync(() => openPaste());
+        return;
+      }
       if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'o') { event.preventDefault(); void openFile(); }
       if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 's') { event.preventDefault(); if(isDesktop())void saveDesktop(event.shiftKey);else exportDocument(); }
-      if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'c' && !editing && entry?.selection) { event.preventDefault(); void copySelection(event.shiftKey); }
+      if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'c' && !editing && !hasSelectedText() && entry?.selection) { event.preventDefault(); void copySelection(event.shiftKey); }
       if ((event.metaKey || event.ctrlKey) && !editing && event.key.toLowerCase() === 'z') {
         event.preventDefault(); dispatch({ type: event.shiftKey ? 'redo' : 'undo' });
       }
@@ -280,9 +327,9 @@ export default function App() {
     window.addEventListener('keydown', keydown); return () => window.removeEventListener('keydown', keydown);
   });
   useEffect(() => {
-    const guard = (event: BeforeUnloadEvent) => { if (!isDesktop() && (workspace.documents.some(needsExport) || workspace.documents.some(d => hasPcrDraft(d.doc, pcrInputs[d.key])))) { event.preventDefault(); event.returnValue = ''; } };
+    const guard = (event: BeforeUnloadEvent) => { if (!isDesktop() && (pasteDialog !== null || workspace.documents.some(needsExport) || workspace.documents.some(d => hasPcrDraft(d.doc, pcrInputs[d.key])))) { event.preventDefault(); event.returnValue = ''; } };
     window.addEventListener('beforeunload', guard); return () => window.removeEventListener('beforeunload', guard);
-  }, [workspace.documents, pcrInputs]);
+  }, [workspace.documents, pcrInputs, pasteDialog]);
   const draftCloseEntry = workspace.documents.find(d => d.key === draftCloseKey);
   const draftEntries = workspace.documents.filter(d => hasPcrDraft(d.doc, pcrInputs[d.key]));
   const range = entry ? toUserRange(entry.selection, entry.doc.sequence.length) : null;
@@ -310,7 +357,7 @@ export default function App() {
     onDragOver={event => { if (event.dataTransfer.types.includes('Files')) event.preventDefault(); }}
     onDrop={event => { event.preventDefault(); void importFiles(event.dataTransfer.files); }}>
     <input ref={fileInput} type="file" accept=".fa,.fasta,.fna,.gb,.gbk,.genbank,.dna,.sg.json,.json" hidden data-testid="file-input" onChange={e => { if (e.target.files) void importFiles(e.target.files); }}/>
-    <header className="document-strip"><div className="brand"><button className="icon-button" aria-label="Show or hide explorer" aria-pressed={layout.explorer} onClick={toggleExplorer}><Icon name="panel"/></button><strong>Gin Schnaps</strong><span className="version">0.8.2</span></div>
+    <header className="document-strip"><div className="brand"><button className="icon-button" aria-label="Show or hide explorer" aria-pressed={layout.explorer} onClick={toggleExplorer}><Icon name="panel"/></button><strong>Gin Schnaps</strong><span className="version">0.8.3</span></div>
       <div className="document-tabs" role="tablist" aria-label="Open documents">{workspace.documents.map(doc => <div key={doc.key} className={`document-tab ${doc.key === workspace.active ? 'active' : ''}`}>
         <button role="tab" aria-selected={doc.key === workspace.active} title={doc.doc.name} aria-label={doc.doc.name} onClick={() => dispatch({ type: 'activate', key: doc.key })}><Icon name={doc.doc.topology === 'circular' ? 'circle' : 'linear'}/><span>{doc.doc.name}</span>{needsExport(doc) && <span className="dirty-dot" aria-label="Unexported changes">●</span>}</button>
         <button className="icon-button close-document" aria-label={`Close ${doc.doc.name}`} onClick={() => closeDocument(doc.key)}><Icon name="close" size={12}/></button>
@@ -332,7 +379,7 @@ export default function App() {
           {isDesktop()&&<><button onClick={()=>void saveDesktop()} disabled={!entry||nativeBusy} title="Save native document (⌘/Ctrl S)">Save</button><button onClick={()=>void saveDesktop(true)} disabled={!entry||nativeBusy} title="Save native document as (⌘/Ctrl Shift S)">Save As…</button></>}
           {!isDesktop()&&<Tool icon="save" title="Export native format (⌘/Ctrl S)" disabled={!entry} onClick={exportDocument}>Native</Tool>}<Tool icon="save" title="Export current document as GenBank" disabled={!entry} onClick={() => { setPendingExport(null); setMessage(null); setExportOpen(true); }}>GenBank</Tool><span className="tool-divider"/>
           <Tool icon="undo" title="Undo (⌘/Ctrl Z)" disabled={!entry?.past.length} onClick={() => dispatch({ type: 'undo' })}/><Tool icon="redo" title="Redo (⌘/Ctrl ⇧ Z)" disabled={!entry?.future.length} onClick={() => dispatch({ type: 'redo' })}/><Tool icon="sequence" title="Edit bases" disabled={!entry} onClick={() => openEditor('bases')}>Edit</Tool>
-          <Tool icon="copy" title="Copy selection (⌘/Ctrl C)" disabled={!entry?.selection} onClick={() => void copySelection()}/><span className="tool-divider"/>
+          <Tool icon="copy" title="Copy selection (⌘/Ctrl C)" disabled={!entry?.selection} onClick={() => void copySelection()}/><Tool icon="copy" title="Paste DNA (⌘/Ctrl V)" disabled={loading || nativeBusy} onClick={() => openPaste()}>Paste…</Tool><span className="tool-divider"/>
           <Tool icon="cut" title="Open restriction analysis" disabled={!entry} onClick={() => dispatch({ type: 'view', view: 'enzymes' })}>Digestion</Tool><Tool icon="primer" title="Simulate PCR" disabled={!entry} onClick={() => dispatch({ type: 'view', view: 'primers' })}>PCR</Tool>
           <span className="flex-spacer"/><span className="readonly-badge">{entry && needsExport(entry) ? "Modified · not exported" : "Prototype · step 8"}</span><Tool icon="info" title="Document information" disabled={!entry} active={layout.info} onClick={() => setInfoWanted(!infoWanted)}/>
         </div>
@@ -380,6 +427,7 @@ export default function App() {
       </main>
     </div>
     <footer className="status-bar" role="status"><span>{loading ? "Reading file…" : entry ? `${number(entry.doc.sequence.length)} bp · DNA ${entry.doc.topology === 'circular' ? "circular" : "linear"}` : "No document"}</span><span className="status-selection" data-testid="selection-status">{range ? `Selection ${number(range.start)} → ${number(range.end)} · ${number(entry!.selection!.length)} bp${range.end < range.start ? " · crosses origin" : ''}` : "No selection"}</span><span className="flex-spacer"/><button className="recovery-toggle" onClick={() => setRecoveryOpen(true)}>Recovery</button><span>{draftEntries.length ? `${draftEntries.length} PCR draft(s) not saved · ` : ""}Local · no transmission</span></footer>
+    {pasteDialog && <PasteDialog doc={pasteDialog.doc} selection={pasteDialog.selection} initialText={pasteDialog.text} copied={copiedDNA} canCreate={workspace.documents.length < MAX_OPEN_DOCUMENTS} onClose={() => setPasteDialog(null)} onApply={applyPaste} onCreate={createPastedDocument}/>}
     {dialog && entry && <EditDialog key={`${dialog.key}-${dialog.mode}-${dialog.featureId ?? "new"}`} doc={entry.doc} selection={entry.selection} mode={dialog.mode} featureId={dialog.featureId} onClose={() => setDialog(null)} onApply={applyEdit}/>}
     <RecoveryPanel workspace={workspace} modalOpen={recoveryOpen} onClose={() => setRecoveryOpen(false)} restore={snapshot => {
       if (draftEntries.length && !window.confirm('Discard unsaved PCR drafts and replace this workspace with the recovered session?')) return false;
