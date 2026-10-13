@@ -3,5 +3,5 @@
   "upstreamCommit": "f9448ee172d0050bff5aaa846fd4ec378cc206a7",
   "upstreamTree": "281fdf91ac26a785e069d2121ecaf220d49ae570",
   "retainedLicense": "GPL-3.0-or-later",
-  "migration": "Independent repository snapshot; original repository retained."
+  "migration": "Independent repository snapshot. Original repository reported deleted by its owner; imported commit/tree identifiers and licenses retained for provenance."
 }

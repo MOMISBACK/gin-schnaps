@@ -1,3 +1,5 @@
+import { appendHistory } from './history';
+import { serializeDocument } from './model';
 import { type Feature, type Selection, type SequenceDocument, featureSelection, selectionSegments, selectedSequence, validateDocument, MAX_BASES } from './model';
 import { mod, reverseComplement } from '../core/dna';
 
@@ -69,12 +71,13 @@ export function createDocument(input: { name: string; description: string; seque
 export type DeriveOptions = { name: string; region: Selection; includeFeatures: boolean; id?: string };
 export function deriveDocument(doc: SequenceDocument, options: DeriveOptions): { doc: SequenceDocument; warnings: string[] } {
   const { region } = options, size = doc.sequence.length;
-  const history = [...doc.history];
   const archive = doc.sourceArchive ? { ...doc.sourceArchive, superseded: true } : null;
   const id = options.id ?? newDocumentId();
   if (!region) {
-    history.push({ action: 'duplicate', summary: `Independent copy of ${doc.name} (${doc.id}).`, warnings: [] });
-    return { doc: validateDocument({ ...doc, id, name: options.name, sourceArchive: archive, history }), warnings: [] };
+    const retained = appendHistory(doc, { action: 'duplicate', summary: `Independent copy of ${doc.name} (${doc.id}).`, warnings: [] });
+    const result = validateDocument({ ...doc, id, name: options.name, sourceArchive: archive, history: retained.history, historyOmitted: retained.historyOmitted });
+    serializeDocument(result);
+    return { doc: result, warnings: retained.notices };
   }
   if (options.includeFeatures && doc.features.some(f=>!featureSelection(f,doc))) throw new Error('Extracting disjoint or unresolved features is not implemented. Disable feature transfer explicitly, or duplicate the complete document.');
   const selected = selectionSegments(region, size);
@@ -104,6 +107,8 @@ export function deriveDocument(doc: SequenceDocument, options: DeriveOptions): {
   }
   const warnings = [`New linear document, ${region.length} bp; ${features.length} feature(s) transferred, ${clippedCount} clipped, ${omitted} omitted.`,
     'The oligo library is copied unchanged, but its PCR recipe is cleared for the new template. Clipped features are marked for review; dependent translations and coordinate qualifiers are archived, not recalculated. The source document is unchanged.'];
-  history.push({ action: 'extract', summary: `Extracted ${region.start + 1}..${mod(region.start + region.length - 1, size) + 1} from ${doc.name} (${doc.id}), reference direction.`, warnings });
-  return { doc: validateDocument({ ...doc, id, name: options.name, topology: 'linear', sequence: selectedSequence(doc, region), features, pcrRecipe:null, sourceArchive: archive, history }), warnings };
+  const retained = appendHistory(doc, { action: 'extract', summary: `Extracted ${region.start + 1}..${mod(region.start + region.length - 1, size) + 1} from ${doc.name} (${doc.id}), reference direction.`, warnings });
+  const result = validateDocument({ ...doc, id, name: options.name, topology: 'linear', sequence: selectedSequence(doc, region), features, pcrRecipe:null, sourceArchive: archive, history: retained.history, historyOmitted: retained.historyOmitted });
+  serializeDocument(result);
+  return { doc: result, warnings: [...warnings, ...retained.notices] };
 }

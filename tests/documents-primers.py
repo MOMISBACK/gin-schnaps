@@ -63,7 +63,7 @@ with sync_playwright() as p:
     try:
         load()
         if case=='library':
-            stored=create_library_source();assert stored['schemaVersion']==4 and len(stored['primers'])==2
+            stored=create_library_source();assert stored['schemaVersion']==5 and len(stored['primers'])==2
             assert [x['sequence'] for x in stored['primers']]==['GGATGCGTAC','CCTACCGCTA'];assert stored['pcrRecipe']['annealingStarts']==[2,2]
             tab('Map');tab('Primers');expect(page.get_by_label('Primer tail 1',exact=True)).to_have_value('GG')
             passed('Explicit PCR save persists both complete oligos, suffix boundaries and product limits; navigation retains the setup')
@@ -86,7 +86,7 @@ with sync_playwright() as p:
             changed=native();assert changed['pcrRecipe'] is None
             expect(page.get_by_test_id('library-sites')).to_have_count(0)
             button('Undo (⌘/Ctrl Z)').click();page.keyboard.press('Escape');assert native()==with_note
-            button('Load saved PCR setup').click();expect(page.get_by_label('Primer annealing 1',exact=True)).to_have_value('ATGCGTAC')
+            page.once('dialog',lambda d:d.accept());button('Load saved PCR setup').click();expect(page.get_by_label('Primer annealing 1',exact=True)).to_have_value('ATGCGTAC')
             passed('Notes remain literal; changing the reagent invalidates its saved recipe and stale binding results; undo restores exact data')
             with page.expect_download() as ev:button('Export oligo FASTA').click()
             f=Path(ev.value.path()).read_text();assert 'GGATGCGTAC' in f and 'CCTACCGCTA' in f and 'Second line' not in f

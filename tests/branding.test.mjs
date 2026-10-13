@@ -9,6 +9,8 @@ function files(dir){return readdirSync(dir,{withFileTypes:true}).flatMap(e=>{
 });}
 test('one public product identity and synchronized release metadata',()=>{
   assert.equal(pkg.name,'gin-schnaps');
+  assert.ok(readFileSync('src/App.tsx','utf8').includes(`className="version">${pkg.version}</span>`));
+  assert.ok(readFileSync('src/formats/genbank-export.ts','utf8').includes(`Gin Schnaps ${pkg.version}. Current edited sequence`));
   const lock=JSON.parse(readFileSync('package-lock.json','utf8'));
   assert.equal(lock.name,pkg.name);assert.equal(lock.version,pkg.version);assert.equal(lock.packages[''].name,pkg.name);assert.equal(lock.packages[''].version,pkg.version);
   const tauri=JSON.parse(readFileSync('desktop/tauri.conf.json','utf8'));

@@ -50,9 +50,16 @@
     mark('Save As cancellation leaves document binding unchanged');
     await control('pick','first.sg.json');await click('Save As…');await settled();dismiss();
     const first=await control('read-first');const a=JSON.parse(first);
-    if(a.schemaVersion!==4||a.sequence.length!==4800)throw new Error('Wrong initial saved document');
+    if(a.schemaVersion!==5||a.sequence.length!==4800)throw new Error('Wrong initial saved document');
     if(!document.querySelector('.native-file-bar').textContent.includes('first.sg.json'))throw new Error('Missing saved path');
-    mark('Native Save As writes and rereads the full schema-4 document');
+    mark('Native Save As writes and rereads the full schema-5 document');
+    await click('Primers');await input('Primer name 1','Native unsaved draft');
+    await control('close-request');await wait(()=>button('Keep working'),'draft quit guard');
+    if(!button('Save all and quit').disabled)throw new Error('Save all allowed losing an unsaved PCR draft');
+    await click('Review PCR draft');
+    if(document.querySelector('[aria-label="Primer name 1"]').value!=='Native unsaved draft')throw new Error('Native quit review lost PCR draft');
+    await input('Primer name 1','Primer A');
+    mark('Native quit refuses Save all while a PCR draft remains; Review preserves the exact form');
     await click('Properties');await input('Document description','Changed after first save');await click('Apply');dismiss();
     await click('Save');await settled();dismiss();
     const second=await control('read-first');

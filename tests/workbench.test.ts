@@ -14,7 +14,7 @@ const demo = createDemo();
 
 test('new DNA normalizes only case/whitespace, validates bounds and does not alter user text',()=>{
  const doc=createDocument({name:'Échantillon français',description:'Note à préserver',sequence:' acgt\nNRY ',topology:'circular'},'new-test');
- assert.equal(doc.sequence,'ACGTNRY');assert.equal(doc.name,'Échantillon français');assert.equal(doc.description,'Note à préserver');assert.equal(doc.schemaVersion,4);
+ assert.equal(doc.sequence,'ACGTNRY');assert.equal(doc.name,'Échantillon français');assert.equal(doc.description,'Note à préserver');assert.equal(doc.schemaVersion,5);
  for(const dna of ['', 'ACGU','AXCG','ACG1','>Header\nACGT','A'.repeat(100001)]) assert.throws(()=>createDocument({name:'test',description:'',sequence:dna,topology:'linear'}));
 });
 test('metadata edits preserve bases, feature evidence and selection; unknown fields remain refused',()=>{

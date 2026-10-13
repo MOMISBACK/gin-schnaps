@@ -1,3 +1,7 @@
+import { PcrDraftDialog } from './components/PcrDraftDialog';
+import { hasPcrDraft, pcrDraftError } from './domain/pcr-drafts';
+import { executeCommand } from './domain/commands';
+import { newDocumentId } from './domain/document-operations';
 import { isDesktop, nativeCall, bytesFromBase64, requestExport, exportBlob, type NativeFile, type NativeSave, type FileBinding } from './adapters/desktop';
 import { NativeQuitDialog } from './components/NativeQuitDialog';
 import { recipeOptions } from './domain/primers';
@@ -95,6 +99,7 @@ export default function App() {
   const [searchOpen, setSearchOpen] = useState(false);
   const [searchInputs, setSearchInputs] = useState<Record<number, SearchOptions>>({});
   const [exportOpen, setExportOpen] = useState(false), [recoveryOpen, setRecoveryOpen] = useState(false);
+  const [draftCloseKey, setDraftCloseKey] = useState<number | null>(null);
   const [pcrInputs, setPcrInputs] = useState<Record<number, PcrOptions>>({});
   const [pendingExport, setPendingExport] = useState<{ key: number; doc: SequenceDocument } | null>(null);
   const [dialog, setDialog] = useState<{ mode: EditMode; key: number; featureId?: string } | null>(null);
@@ -124,12 +129,15 @@ export default function App() {
 
   const entry = workspace.documents.find(d => d.key === workspace.active);
   const openEditor = (mode: EditMode, featureId?: string) => { if (entry && !importBusy.current) { setMessage(null); setPendingExport(null); setDialog({ mode, key: entry.key, featureId }); } };
-  const closeDocument = (key: number) => {
+  const closeDocument = (key: number, discardDraft = false) => {
+    if (importBusy.current) return;
     const target = workspace.documents.find(d => d.key === key);
+    if (target && !discardDraft && hasPcrDraft(target.doc, pcrInputs[key])) { setDraftCloseKey(key); return; }
     if (target && needsExport(target) && !window.confirm("Unexported changes. Close and discard these changes?")) return;
     const binding=bindings.current.get(key);
     if(binding){void nativeCall('desktop_release',{token:binding.token}).catch(()=>{});bindings.current.delete(key);}
     dispatch({ type: 'close', key });
+    setDraftCloseKey(null);
     if (pendingExport?.key === key) { setPendingExport(null); setMessage(null); }
     setSearchInputs(old => { const next = { ...old }; delete next[key]; return next; });
     setPcrInputs(old => { const next = { ...old }; delete next[key]; return next; });
@@ -152,7 +160,7 @@ export default function App() {
     const safe = entry.doc.name.replace(/[^a-zA-Z0-9._-]/g, '_').slice(0, 100) || 'sequence';
     try { downloadFile(`${safe}.sg.json`, serializeDocument(entry.doc)); } catch (error) { notifyError((error as Error).message); return; }
     setPendingExport({ key: entry.key, doc: entry.doc });
-    setMessage({ text: "Native export requested. Check that you received the file. The source file has not been overwritten.", error: false });
+    setMessage({ text: "Native export requested. Check that you received the file. The source file has not been overwritten." + (hasPcrDraft(entry.doc,pcrInputs[entry.key]) ? " Unsaved PCR draft NOT included: use Save PCR setup first." : ""), error: false });
   };
   const openDemo = (linear = false) => {
     const existing = workspace.documents.find(d => d.doc.id === (linear ? 'demo-linear-1200' : 'demo-circular-4800'));
@@ -161,7 +169,7 @@ export default function App() {
     dispatch({ type: 'open', documents: [createDemo(linear)], source: "Built-in synthetic example" });
   };
   const importFiles = async (files: FileList | File[]) => {
-    if (documentDialog || dialog || exportOpen || recoveryOpen || importBusy.current || !files.length) return;
+    if (documentDialog || dialog || exportOpen || recoveryOpen || draftCloseKey !== null || document.querySelector('[role="dialog"]') || importBusy.current || !files.length) return;
     importBusy.current = true; setLoading(true); setPendingExport(null);
     try {
       if (files.length !== 1) throw new Error("Open one file at a time. A FASTA file may contain multiple sequences.");
@@ -186,7 +194,7 @@ export default function App() {
     if(prior&&prior.token!==result.token)void nativeCall('desktop_release',{token:prior.token}).catch(()=>{});
     dispatch({type:'checkpoint',key:target.key,doc:captured});
     setNativePath(result.path);
-    setMessage({text:`Saved and verified: ${result.path}.${result.backup?' Previous version: '+result.backup+'.':''} ${result.warnings.join(' ')}`,error:false});
+    setMessage({text:`Saved and verified: ${result.path}.${result.backup?' Previous version: '+result.backup+'.':''} ${result.warnings.join(' ')}${hasPcrDraft(target.doc,pcrInputs[target.key]) ? ' Unsaved PCR draft NOT included: use Save PCR setup first.' : ''}`,error:false});
     return true;
   };
   const saveDesktop = async(saveAs=false) => {
@@ -215,10 +223,12 @@ export default function App() {
   };
   const requestQuit = async() => {
     if(importBusy.current)return;
+    if (document.querySelector('[role="dialog"]')) { notifyError('Finish or cancel the open dialog before quitting.'); return; }
     // Always confirm: an unsaved oligo/PCR draft can exist without document dirty state.
     setQuitOpen(true);
   };
   const quitSaved = async() => {
+    if (workspaceRef.current.documents.some(d => hasPcrDraft(d.doc, pcrInputs[d.key]))) throw new Error('Unsaved PCR drafts remain. Keep working and save each PCR setup first.');
     const targets=workspaceRef.current.documents.filter(needsExport);
     importBusy.current=true;
     try{
@@ -255,7 +265,7 @@ export default function App() {
   };
   useEffect(() => {
     const keydown = (event: KeyboardEvent) => {
-      if (documentDialog || dialog || exportOpen || recoveryOpen || quitOpen || nativeBusy) { if ((event.metaKey || event.ctrlKey) && ['o','s','n','f'].includes(event.key.toLowerCase())) event.preventDefault(); return; }
+      if (documentDialog || dialog || exportOpen || recoveryOpen || quitOpen || nativeBusy || draftCloseKey !== null) { if ((event.metaKey || event.ctrlKey) && ['o','s','n','f'].includes(event.key.toLowerCase())) event.preventDefault(); return; }
       if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'f' && entry) { event.preventDefault(); setSearchOpen(true); }
       if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'n') { event.preventDefault(); setDocumentDialog('new'); }
       const editing = event.target instanceof HTMLInputElement || event.target instanceof HTMLTextAreaElement;
@@ -270,9 +280,11 @@ export default function App() {
     window.addEventListener('keydown', keydown); return () => window.removeEventListener('keydown', keydown);
   });
   useEffect(() => {
-    const guard = (event: BeforeUnloadEvent) => { if (!isDesktop() && workspace.documents.some(needsExport)) { event.preventDefault(); event.returnValue = ''; } };
+    const guard = (event: BeforeUnloadEvent) => { if (!isDesktop() && (workspace.documents.some(needsExport) || workspace.documents.some(d => hasPcrDraft(d.doc, pcrInputs[d.key])))) { event.preventDefault(); event.returnValue = ''; } };
     window.addEventListener('beforeunload', guard); return () => window.removeEventListener('beforeunload', guard);
-  }, [workspace.documents]);
+  }, [workspace.documents, pcrInputs]);
+  const draftCloseEntry = workspace.documents.find(d => d.key === draftCloseKey);
+  const draftEntries = workspace.documents.filter(d => hasPcrDraft(d.doc, pcrInputs[d.key]));
   const range = entry ? toUserRange(entry.selection, entry.doc.sequence.length) : null;
   const resizePanel = (event: React.PointerEvent<HTMLDivElement>, panel: 'explorer' | 'info') => {
     if (event.button !== 0) return;
@@ -298,7 +310,7 @@ export default function App() {
     onDragOver={event => { if (event.dataTransfer.types.includes('Files')) event.preventDefault(); }}
     onDrop={event => { event.preventDefault(); void importFiles(event.dataTransfer.files); }}>
     <input ref={fileInput} type="file" accept=".fa,.fasta,.fna,.gb,.gbk,.genbank,.dna,.sg.json,.json" hidden data-testid="file-input" onChange={e => { if (e.target.files) void importFiles(e.target.files); }}/>
-    <header className="document-strip"><div className="brand"><button className="icon-button" aria-label="Show or hide explorer" aria-pressed={layout.explorer} onClick={toggleExplorer}><Icon name="panel"/></button><strong>Gin Schnaps</strong><span className="version">0.8.1</span></div>
+    <header className="document-strip"><div className="brand"><button className="icon-button" aria-label="Show or hide explorer" aria-pressed={layout.explorer} onClick={toggleExplorer}><Icon name="panel"/></button><strong>Gin Schnaps</strong><span className="version">0.8.2</span></div>
       <div className="document-tabs" role="tablist" aria-label="Open documents">{workspace.documents.map(doc => <div key={doc.key} className={`document-tab ${doc.key === workspace.active ? 'active' : ''}`}>
         <button role="tab" aria-selected={doc.key === workspace.active} title={doc.doc.name} aria-label={doc.doc.name} onClick={() => dispatch({ type: 'activate', key: doc.key })}><Icon name={doc.doc.topology === 'circular' ? 'circle' : 'linear'}/><span>{doc.doc.name}</span>{needsExport(doc) && <span className="dirty-dot" aria-label="Unexported changes">●</span>}</button>
         <button className="icon-button close-document" aria-label={`Close ${doc.doc.name}`} onClick={() => closeDocument(doc.key)}><Icon name="close" size={12}/></button>
@@ -358,7 +370,7 @@ export default function App() {
               {entry.view === 'translation' && <TranslationPanel key={entry.key} entry={entry}/>}
               {entry.view === 'enzymes' && <RestrictionPanel key={entry.key} entry={entry} onSelect={s => { select(s); dispatch({ type: 'view', view: 'map' }); }}/>}
               {entry.view === 'primers' && <PcrPanel onCommit={result=>{dispatch({type:'commit',key:entry.key,doc:result.doc,selection:result.selection});setPendingExport(null);if(result.warnings.length)setMessage({text:result.warnings.join(' '),error:false});}} key={entry.key} entry={entry} input={pcrInputs[entry.key] ?? recipeOptions(entry.doc) ?? EMPTY_PCR} setInput={input => setPcrInputs(old => ({ ...old, [entry.key]: input }))} onSelect={s => { select(s); dispatch({ type: 'view', view: 'map' }); }}/>}
-              {entry.view === 'history' && <div className="history-view"><h2>Document history</h2><div className="history-event"><Icon name="folder"/><div><strong>Document opened in this workspace</strong><p>{entry.source}</p><small>No cloning history imported or reconstructed. The operations below come from the native document; they are not evidence of experimental work.</small></div></div>{entry.doc.history.map((event, i) => <div className="history-event" key={i}><Icon name="history"/><div><strong>{i + 1}. {event.summary}</strong>{event.warnings.map((w,j) => <p key={j}>{w}</p>)}</div></div>)}<p className="field-note">Undo/redo: {entry.past.length} previous state(s), {entry.future.length} next state(s), in this session only.</p></div>}
+              {entry.view === 'history' && <div className="history-view"><h2>Document history</h2><div className="history-event"><Icon name="folder"/><div><strong>Document opened in this workspace</strong><p>{entry.source}</p><small>No cloning history imported or reconstructed. The operations below come from the native document; they are not evidence of experimental work.</small></div></div>{entry.doc.historyOmitted > 0 && <p className="analysis-warning" data-testid="history-retention">{entry.doc.historyOmitted} older operation description(s) are no longer retained in this document. Sequence, annotations, oligos and source archives are not removed. Older exports may retain earlier descriptions.</p>}{entry.doc.history.map((event, i) => <div className="history-event" key={i}><Icon name="history"/><div><strong>{entry.doc.historyOmitted + i + 1}. {event.summary}</strong>{event.warnings.map((w,j) => <p key={j}>{w}</p>)}</div></div>)}<p className="field-note">Retained journal: up to 500 recent descriptions and about 512 kB after each edit; older descriptions are counted, not silently claimed as complete. Undo/redo: {entry.past.length} previous state(s), {entry.future.length} next state(s), in this session only.</p></div>}
             </div>
             {entry.view === 'sequence' && <Minimap entry={entry} viewport={viewport} onNavigate={fraction => { const node = document.querySelector<HTMLElement>('.sequence-viewport'); if (node) node.scrollTop = fraction * (node.scrollHeight - node.clientHeight); }}/ >}
             {(entry.view === 'map' || entry.view === 'sequence') && <SelectionBar key={`selection-${entry.key}`} doc={entry.doc} selection={entry.selection} onSelect={select} onError={notifyError}/>}
@@ -367,13 +379,14 @@ export default function App() {
         </div>}
       </main>
     </div>
-    <footer className="status-bar" role="status"><span>{loading ? "Reading file…" : entry ? `${number(entry.doc.sequence.length)} bp · DNA ${entry.doc.topology === 'circular' ? "circular" : "linear"}` : "No document"}</span><span className="status-selection" data-testid="selection-status">{range ? `Selection ${number(range.start)} → ${number(range.end)} · ${number(entry!.selection!.length)} bp${range.end < range.start ? " · crosses origin" : ''}` : "No selection"}</span><span className="flex-spacer"/><button className="recovery-toggle" onClick={() => setRecoveryOpen(true)}>Recovery</button><span>Local · no transmission</span></footer>
+    <footer className="status-bar" role="status"><span>{loading ? "Reading file…" : entry ? `${number(entry.doc.sequence.length)} bp · DNA ${entry.doc.topology === 'circular' ? "circular" : "linear"}` : "No document"}</span><span className="status-selection" data-testid="selection-status">{range ? `Selection ${number(range.start)} → ${number(range.end)} · ${number(entry!.selection!.length)} bp${range.end < range.start ? " · crosses origin" : ''}` : "No selection"}</span><span className="flex-spacer"/><button className="recovery-toggle" onClick={() => setRecoveryOpen(true)}>Recovery</button><span>{draftEntries.length ? `${draftEntries.length} PCR draft(s) not saved · ` : ""}Local · no transmission</span></footer>
     {dialog && entry && <EditDialog key={`${dialog.key}-${dialog.mode}-${dialog.featureId ?? "new"}`} doc={entry.doc} selection={entry.selection} mode={dialog.mode} featureId={dialog.featureId} onClose={() => setDialog(null)} onApply={applyEdit}/>}
     <RecoveryPanel workspace={workspace} modalOpen={recoveryOpen} onClose={() => setRecoveryOpen(false)} restore={snapshot => {
+      if (draftEntries.length && !window.confirm('Discard unsaved PCR drafts and replace this workspace with the recovered session?')) return false;
       setPendingExport(null); setMessage(null); setPcrInputs({});
       for(const binding of bindings.current.values())void nativeCall('desktop_release',{token:binding.token}).catch(()=>{});
       bindings.current.clear();
-      dispatch({ type: 'restore', documents: snapshot.documents, activeIndex: snapshot.activeIndex }); setRecoveryOpen(false);
+      dispatch({ type: 'restore', documents: snapshot.documents, activeIndex: snapshot.activeIndex }); setRecoveryOpen(false); return true;
     }}/>
     {exportOpen && entry && <ExportDialog doc={entry.doc} onClose={() => setExportOpen(false)} onExport={async(name, text) => {
       setExportOpen(false); setPendingExport(null);
@@ -389,7 +402,21 @@ export default function App() {
       dispatch({ type: 'open', documents: [doc], source: 'Created locally', dirty: true }); setDocumentDialog(null); setMessage(null); setPendingExport(null);
     }} onApply={result => { if (!entry) return; dispatch({ type: 'commit', key: entry.key, doc: result.doc, selection: result.selection }); setDocumentDialog(null); setPendingExport(null); setMessage({ text: 'Changes applied. Undo is available; export to keep your work.', error: false }); }}/>}
     {message && <div className={`notification ${message.error ? 'error' : ''}`} role={message.error ? 'alert' : 'status'}><Icon name={message.error ? 'warning' : 'info'}/><div className="notification-content"><p>{message.text}</p>{pendingExport && !message.error && <button className="small-button" onClick={() => { dispatch({ type: 'checkpoint', ...pendingExport }); setPendingExport(null); setMessage(null); }}>Confirm file received</button>}</div><button className="icon-button" aria-label="Close message" onClick={() => setMessage(null)}><Icon name="close"/></button></div>}
+    {draftCloseEntry && <PcrDraftDialog name={draftCloseEntry.doc.name}
+      validationError={pcrDraftError(pcrInputs[draftCloseEntry.key] ?? EMPTY_PCR)}
+      onKeep={() => setDraftCloseKey(null)} onDiscard={() => closeDocument(draftCloseEntry.key, true)}
+      onSave={() => {
+        const result = executeCommand(draftCloseEntry.doc, {kind:'save-pcr',input:pcrInputs[draftCloseEntry.key] ?? EMPTY_PCR,newIds:[newDocumentId(),newDocumentId()]});
+        dispatch({type:'commit',key:draftCloseEntry.key,doc:result.doc,selection:draftCloseEntry.selection});
+        setPcrInputs(old => ({...old,[draftCloseEntry.key]:recipeOptions(result.doc) ?? EMPTY_PCR}));
+        setDraftCloseKey(null);setPendingExport(null);
+        setMessage({text:'PCR setup stored in the document. The tab remains open: save or export the native document to keep it. '+result.warnings.join(' '),error:false});
+      }}/>}
     {nativeBusy&&<div className="modal-overlay native-busy"><div role="dialog" aria-modal="true" className="edit-dialog"><div className="dialog-body"><p>Complete or cancel the native file dialog. Do not close the application during a write.</p></div></div></div>}
-    {quitOpen&&<NativeQuitDialog count={workspace.documents.filter(needsExport).length} onCancel={()=>setQuitOpen(false)} onDiscard={async()=>{await nativeCall('desktop_close');}} onSave={quitSaved}/>}
+    {quitOpen&&<NativeQuitDialog count={workspace.documents.filter(needsExport).length} draftNames={draftEntries.map(d => d.doc.name)} onReviewDraft={() => {
+      const first = draftEntries[0]; if (!first) return;
+      dispatch({type:'activate',key:first.key}); setQuitOpen(false);
+      dispatch({type:'view',view:'primers'});
+    }} onCancel={()=>setQuitOpen(false)} onDiscard={async()=>{await nativeCall('desktop_close');}} onSave={quitSaved}/>}
   </div>;
 }

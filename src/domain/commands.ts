@@ -1,3 +1,5 @@
+import { appendHistory } from './history';
+import { serializeDocument } from './model';
 import { primerCommand, type PrimerCommand } from './primer-commands';
 import { transformDocument, type DocumentCommand } from './document-operations';
 import { type Feature, type Qualifier, type Segment, type Selection, type SequenceDocument, featureSelection, MAX_BASES, selectionSegments, validateDocument } from './model';
@@ -39,10 +41,12 @@ function canonical(spans: Segment[], size: number, anchor: number | null): Segme
 }
 function finish(before: SequenceDocument, next: SequenceDocument, action: string, summary: string, warnings: string[], selection: Selection, changed = 0, removed = 0): CommandResult {
   if (same(before, next)) return { doc: before, selection, changed: 0, removed: 0, warnings: [] };
+  const retained = appendHistory(before, { action, summary, warnings });
   const doc = validateDocument({ ...next,
     sourceArchive: next.sourceArchive ? { ...next.sourceArchive, superseded: true } : null,
-    history: [...before.history, { action, summary, warnings }] });
-  return { doc, selection, changed, removed, warnings };
+    history: retained.history, historyOmitted: retained.historyOmitted });
+  serializeDocument(doc); // Refuse an unexportable edit before it reaches the workspace.
+  return { doc, selection, changed, removed, warnings: [...warnings, ...retained.notices] };
 }
 export function executeCommand(doc: SequenceDocument, command: Command): CommandResult {
   if (command.kind==='oligo'||command.kind==='remove-oligo'||command.kind==='save-pcr'||command.kind==='clear-pcr') {

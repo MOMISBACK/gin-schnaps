@@ -57,7 +57,7 @@ test('native schema refuses unsupported fields instead of discarding them', () =
   assert.throws(() => validateDocument({ ...doc, sequence: 'AXCG' }));
   assert.throws(() => validateDocument({ ...doc, sequence: 'acgt' }));
   assert.throws(() => validateDocument({ ...doc, sequence: 'A'.repeat(100001) }));
-  assert.throws(() => validateDocument(JSON.parse(serializeDocument(doc).replace('"schemaVersion": 4', '"__proto__": {}, "schemaVersion": 4'))));
+  assert.throws(() => validateDocument(JSON.parse(serializeDocument(doc).replace('"schemaVersion": 5', '"__proto__": {}, "schemaVersion": 5'))));
 });
 test('invalid or overlapping features, duplicate IDs, and hostile colors are rejected', () => {
   const base = doc.features[1];

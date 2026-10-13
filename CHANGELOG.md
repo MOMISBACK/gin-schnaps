@@ -1,5 +1,21 @@
 # Changelog
 
+## 0.8.2 — corrective patch (unreleased)
+
+- Fix the 501st-operation editing blockade. A rolling journal retains at most
+  500 recent descriptions, with an approximately 512 kB UTF-8 budget on append.
+  The omitted-event count is visible and persistent; scientific data are not
+  deleted by retention. Existing journals are not shortened on import.
+- Protect unsaved PCR drafts on tab close, browser leave and desktop quit.
+  Saving a document does not claim to save uncommitted PCR fields. Library
+  edits preserve independent manual drafts; loading a setup asks before replacing one.
+- Native schema 5 retains the journal counter and reads versions 1–4. Earlier
+  application versions cannot necessarily open the new format. Export backups first.
+- Reject edits that would create a native document beyond the reimport size limit.
+- Reject release-number reuse for another source commit. Verify public downloads
+  without credentials after publication, including hashes, ZIP contents and provenance.
+- Administrative branch/release settings remain a maintainer task; see MAINTAINER.md.
+
 ## 0.8.1 — Gin Schnaps preview
 
 - Unified application name, native identity, executable names, diagnostics and exports.
