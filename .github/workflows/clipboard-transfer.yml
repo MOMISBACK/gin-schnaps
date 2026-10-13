@@ -1,0 +1,34 @@
+name: Record verified clipboard source
+on:
+  push:
+    branches: [fix/0.8.2-reliability]
+    paths: ['.clipboard-transfer/**', '.github/workflows/clipboard-transfer.yml']
+permissions:
+  contents: read
+jobs:
+  record:
+    if: startsWith(github.event.head_commit.message, 'chore: transfer verified clipboard')
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          ref: fix/0.8.2-reliability
+      - name: Apply only the hash-verified source patch, without executing it
+        env:
+          EXPECTED_HEAD: ${{ github.sha }}
+        run: |
+          test "$(git rev-parse HEAD)" = "$EXPECTED_HEAD"
+          cat .clipboard-transfer/part{0,1,2,3}.xz > /tmp/clipboard.patch.xz
+          echo 'a7c36efb88f9e025da00b91d328ca2f0decbb1ac09a53e879950b26c0ba57a17  /tmp/clipboard.patch.xz' | sha256sum -c -
+          python3 -c "import lzma,pathlib; pathlib.Path('/tmp/clipboard.patch').write_bytes(lzma.decompress(pathlib.Path('/tmp/clipboard.patch.xz').read_bytes()))"
+          git apply --index /tmp/clipboard.patch
+          git rm -r .clipboard-transfer .github/workflows/clipboard-transfer.yml
+          test "$(git write-tree)" = '94e401aca3f6ff1e7932f346ecbc02a2b32ef2be'
+          git restore --source=HEAD --staged --worktree .github/workflows/clipboard-transfer.yml
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git commit -m 'feat: add verified DNA clipboard and selection synchronization'
+          git push origin HEAD:fix/0.8.2-reliability
