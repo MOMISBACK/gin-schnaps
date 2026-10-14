@@ -81,6 +81,8 @@ jobs:
         run: npm run test:expert-ui
       - name: PCR products to documents with persistent provenance
         run: npm run test:pcr-documents
+      - name: Portable document backups and PCR draft restoration
+        run: npm run test:backups
       - name: Emitted-source dependency inventory
         run: npm run security:inventory
       - name: Known-advisory gate (not a security certification)

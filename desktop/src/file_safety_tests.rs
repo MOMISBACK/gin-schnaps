@@ -190,3 +190,25 @@ fn empty_schema6_draft_saves_without_inventing_bases() {
     assert!(store.save(grant["token"].as_str().unwrap(),&empty.replace("\"schemaVersion\":6","\"schemaVersion\":5")).is_err());
     assert_eq!(fs::read_to_string(&path).unwrap(),empty);
 }
+
+#[test]
+fn portable_backups_have_a_separate_bounded_read_only_grant() {
+    let scratch = Scratch::new(); let mut store = FileStore::new(scratch.0.join("app")).unwrap();
+    let path = scratch.0.join("workspace.gin-backup.json");
+    let data = vec![b' '; DOCUMENT_LIMIT + 1]; fs::write(&path, &data).unwrap();
+    let opened = store.open(&path).unwrap();
+    assert_eq!(opened["writable"], false);
+    assert!(store.save(opened["token"].as_str().unwrap(), &document("ACGT")).unwrap_err().contains("never overwritten"));
+    assert_eq!(fs::read(&path).unwrap(), data);
+    let ordinary = scratch.0.join("ordinary.json"); fs::write(&ordinary, &data).unwrap();
+    assert!(store.open(&ordinary).is_err());
+}
+
+#[test]
+fn oversized_portable_backup_never_creates_a_file_grant() {
+    let scratch = Scratch::new(); let mut store = FileStore::new(scratch.0.join("app")).unwrap();
+    let path = scratch.0.join("large.gin-backup.json");
+    File::create(&path).unwrap().set_len(BACKUP_LIMIT as u64 + 1).unwrap();
+    assert!(store.open(&path).is_err()); assert!(store.grants.is_empty());
+    assert_eq!(fs::metadata(&path).unwrap().len(), BACKUP_LIMIT as u64 + 1);
+}

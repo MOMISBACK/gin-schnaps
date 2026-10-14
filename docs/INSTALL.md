@@ -89,3 +89,10 @@ Report the exact error and package version through [Issues](https://github.com/M
 Never attach confidential sequences, source archives, personal paths or diagnostic
 information you have not reviewed. Release assets include SHA256SUMS.txt and
 RELEASE.json so you can check package integrity and the exact source revision.
+
+## Moving work when upgrading
+
+Versions with **Backups** can explicitly export open documents and PCR drafts in
+one `.gin-backup.json` file. Restore through **Backups** in the new version, inspect
+the list, and save the new tabs. Older versions still require individual `.sg.json`
+exports and explicit saving of each PCR setup. [Details](DOCUMENT_BACKUPS.md).

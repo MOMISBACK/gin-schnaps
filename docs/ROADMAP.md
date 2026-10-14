@@ -6,6 +6,7 @@
 clipboard and automated native-write resilience. 0.8.4 added synchronized Map /
 Sequence, editing shortcuts, and exchange-format exports. 0.8.5 adds explicit
 PCR-to-document creation with saved inputs, exact annotation projection and review.
+0.8.6 adds explicit portable document/draft backups and non-destructive restore.
 These are development previews, not laboratory-validated releases.
 
 ## Essential next work

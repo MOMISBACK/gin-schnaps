@@ -8,6 +8,7 @@ export type OpenDocument = {
 };
 export type Workspace = { documents: OpenDocument[]; active: number | null; nextKey: number };
 export type WorkspaceAction =
+  | { type: 'append-backup'; expectedNextKey: number; workspace: Workspace }
   | { type: 'restore'; documents: { doc: SequenceDocument; source: string }[]; activeIndex: number }
   | { type: 'open'; documents: SequenceDocument[]; source: string; dirty?: boolean }
   | { type: 'activate'; key: number }
@@ -22,6 +23,10 @@ export type WorkspaceAction =
   | { type: 'undo' | 'redo' };
 export const emptyWorkspace: Workspace = { documents: [], active: null, nextKey: 1 };
 export function workspaceReducer(state: Workspace, action: WorkspaceAction): Workspace {
+  if (action.type === 'append-backup') {
+    if (state.nextKey !== action.expectedNextKey || state.documents.some((d, i) => action.workspace.documents[i] !== d)) throw new Error('Workspace changed. Reopen backup before restoring.');
+    return action.workspace;
+  }
   if (action.type === 'restore') {
     let restored = { ...emptyWorkspace, nextKey: state.nextKey };
     for (const item of action.documents) restored = workspaceReducer(restored, { type: 'open', documents: [item.doc], source: item.source });
