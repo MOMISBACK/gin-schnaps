@@ -353,6 +353,13 @@ export default function App() {
   });
   useEffect(() => {
     const keydown = (event: KeyboardEvent) => {
+      // Select the active input, not DNA; Ctrl+A works on macOS as well as Cmd+A.
+      if ((event.ctrlKey || event.metaKey) && !event.altKey && !event.shiftKey && event.key.toLowerCase() === 'a'
+        && (event.target instanceof HTMLInputElement || event.target instanceof HTMLTextAreaElement)) {
+        event.preventDefault();
+        event.target.select();
+        return;
+      }
       if (documentDialog || dialog || pasteDialog || exportOpen || recoveryOpen || quitOpen || nativeBusy || draftCloseKey !== null || document.querySelector('[role="dialog"]')) { if ((event.metaKey || event.ctrlKey) && ['o','s','n','f','r'].includes(event.key.toLowerCase())) event.preventDefault(); return; }
       if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'f' && entry) { event.preventDefault(); setSearchOpen(true); }
       if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'n') { event.preventDefault(); setDocumentDialog('new'); }
