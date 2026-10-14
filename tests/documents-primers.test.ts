@@ -80,10 +80,11 @@ test('every origin rotation and reverse complement preserve disjoint biological 
   }
   assert.equal(cases,seq.length*3);
 });
-test('unsafe splices and extractions with complex features are blocked before mutation',()=>{
+test('unresolved annotations stay guarded while exact disjoint joins are editable',()=>{
   for(const expr of ['join(2..8,20..28)','<2..20']) {
     const d=annotated(expr), before=serializeDocument(d);
-    assert.throws(()=>executeCommand(d,{kind:'splice',start:10,deleteCount:1,insert:'A'}),/blocked/);
+    if (expr.startsWith('<')) assert.throws(()=>executeCommand(d,{kind:'splice',start:10,deleteCount:1,insert:'A'}),/blocked/);
+    else { const edited=executeCommand(d,{kind:'splice',start:10,deleteCount:1,insert:'A'}).doc; assert.deepEqual(edited.features[0].segments,d.features[0].segments); }
     assert.throws(()=>deriveDocument(d,{name:'Extract',region:{start:0,length:35},includeFeatures:true}),/not implemented/);
     const extracted=deriveDocument(d,{name:'Extract',region:{start:0,length:35},includeFeatures:false}).doc;
     assert.equal(extracted.sequence,d.sequence.slice(0,35));assert.equal(extracted.features.length,0);

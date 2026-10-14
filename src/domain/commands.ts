@@ -1,4 +1,5 @@
 import { appendHistory } from './history';
+import { spliceExactParts } from './disjoint-splice';
 import { serializeDocument } from './model';
 import { primerCommand, type PrimerCommand } from './primer-commands';
 import { transformDocument, type DocumentCommand } from './document-operations';
@@ -91,7 +92,7 @@ export function executeCommand(doc: SequenceDocument, command: Command): Command
       throw new Error("Linearization refused: a feature crosses the origin. Edit its definition first.");
     return finish(doc, { ...doc, topology: command.topology }, 'topology', `Declared topology: ${command.topology === 'circular' ? "circular" : "linear"}.`, ["The document topology, not just its presentation, was changed."], null);
   }
-  if(doc.features.some(f=>!featureSelection(f,doc)))throw new Error('DNA splicing is blocked while disjoint or unresolved features are present. Their exact edit semantics are not implemented; resolve or explicitly remove those features first.');
+  if(doc.features.some(f=>f.unresolved))throw new Error('DNA splicing is blocked while unresolved location descriptors are present. Resolve or explicitly remove the feature first.');
   const { start, deleteCount, insert } = command, n = doc.sequence.length;
   if (!Number.isInteger(start) || start < 0 || start > n || !Number.isInteger(deleteCount) || deleteCount < 0 || deleteCount > n || (start === n && deleteCount > 0))
     throw new Error("Operation outside the sequence bounds.");
@@ -100,6 +101,7 @@ export function executeCommand(doc: SequenceDocument, command: Command): Command
   const newN = n - deleteCount + insert.length;
   if (newN < 1 || newN > MAX_BASES) throw new Error(`The result must contain between 1 and ${MAX_BASES} bases.`);
   const wrapping = start + deleteCount > n;
+  if(wrapping && doc.features.some(f=>!featureSelection(f,doc))) throw new Error('An origin-crossing DNA splice with disjoint joins is not supported. Rotate the origin first, then edit the exact parts.');
   const end = wrapping ? start + deleteCount - n : start + deleteCount;
   const removedSpans: Segment[] = deleteCount ? selectionSegments({ start, length: deleteCount }, n) : [];
   const mappings = wrapping
@@ -109,9 +111,22 @@ export function executeCommand(doc: SequenceDocument, command: Command): Command
   const sequence = wrapping ? doc.sequence.slice(end, start) + insert : doc.sequence.slice(0, start) + insert + doc.sequence.slice(end);
   // An identical substitution changes neither the scientific document nor its provenance.
   if (!wrapping && sequence === doc.sequence) return { doc, selection: insert.length ? { start: insertionPosition, length: insert.length } : null, changed: 0, removed: 0, warnings: [] };
-  let changed = 0, removed = 0, archived = 0;
+  let changed = 0, removed = 0, archived = 0, lostParts = 0;
   const features: Feature[] = [];
   for (const feature of doc.features) {
+    if (!featureSelection(feature, doc)) {
+      const projected = spliceExactParts(feature.segments, start, deleteCount, insert.length);
+      lostParts += projected.lostParts;
+      if (!projected.parts.length) { removed++; continue; }
+      const positionsChanged = !same(projected.parts, feature.segments);
+      const next = projected.touched || positionsChanged
+        ? invalidate({ ...feature, segments: projected.parts }, projected.touched, positionsChanged)
+        : feature;
+      archived += next.archivedQualifiers.length - feature.archivedQualifiers.length;
+      if (projected.touched || positionsChanged) changed++;
+      features.push(next);
+      continue;
+    }
     const fstart = feature.segments[0].start;
     const flength = feature.segments.reduce((sum, s) => sum + s.end - s.start, 0);
     const distance = doc.topology === 'circular' ? ((start % n) - fstart + n) % n : start - fstart;
@@ -146,6 +161,7 @@ export function executeCommand(doc: SequenceDocument, command: Command): Command
   const warnings: string[] = [];
   if (wrapping && deleteCount < n) warnings.push(`The deleted origin is replaced by old base ${end + 1}, the first retained base. Inserted DNA is placed at the sequence end before this new origin.`);
   if (deleteCount === n) warnings.push("The entire previous sequence is deleted. The new origin is the first inserted base.");
+  if (lostParts) warnings.push(`${lostParts} disjoint annotation part(s) fully deleted; surviving parts retain their original declared order and strand. Review the feature definition.`);
   if (removed) warnings.push(`${removed} feature(s) fully deleted; recoverable with Undo during this session.`);
   if (changed) warnings.push(`${changed} feature(s) adjusted: check their biological interpretation.`);
   if (archived) warnings.push(`${archived} potentially obsolete qualifier(s) archived, without recalculating translation.`);

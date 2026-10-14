@@ -281,6 +281,21 @@ export default function App() {
       notifyError('System clipboard access was refused. The bases remain in session memory: switch documents, open Paste and choose Use last copied DNA.');
     }
   };
+  const typeBase = (base: string) => {
+    if (importBusy.current || nativeBusy || document.querySelector('[role="dialog"]')) return;
+    const current = workspaceRef.current.documents.find(d => d.key === workspaceRef.current.active);
+    if (!current?.selection) { notifyError('Select one or more bases before typing.'); return; }
+    try {
+      const selection = current.selection;
+      const result = executeCommand(current.doc, { kind: 'splice', start: selection.start, deleteCount: selection.length, insert: base });
+      if (result.doc === current.doc) return;
+      const size = result.doc.sequence.length;
+      const next = current.doc.topology === 'circular' ? (selection.start + 1) % size : Math.min(size - 1, selection.start + 1);
+      dispatch({ type: 'commit', key: current.key, doc: result.doc, selection: { start: next, length: 1 } });
+      setPendingExport(null);
+      if (result.warnings.length) setMessage({ text: result.warnings.join(' '), error: false });
+    } catch (error) { notifyError((error as Error).message); }
+  };
   const cutSelection = async () => {
     if (cutBusy.current || importBusy.current || nativeBusy || document.querySelector('[role="dialog"]')) return;
     const captured = workspaceRef.current.documents.find(d => d.key === workspaceRef.current.active);
@@ -420,7 +435,7 @@ export default function App() {
     onDragOver={event => { if (event.dataTransfer.types.includes('Files')) event.preventDefault(); }}
     onDrop={event => { event.preventDefault(); void importFiles(event.dataTransfer.files); }}>
     <input ref={fileInput} type="file" accept=".fa,.fasta,.fna,.gb,.gbk,.genbank,.embl,.txt,.dna,.sg.json,.json" hidden data-testid="file-input" onChange={e => { if (e.target.files) void importFiles(e.target.files); }}/>
-    <header className="document-strip"><div className="brand"><button className="icon-button" aria-label="Show or hide explorer" aria-pressed={layout.explorer} onClick={toggleExplorer}><Icon name="panel"/></button><strong>Gin Schnaps</strong><span className="version">0.8.6</span></div>
+    <header className="document-strip"><div className="brand"><button className="icon-button" aria-label="Show or hide explorer" aria-pressed={layout.explorer} onClick={toggleExplorer}><Icon name="panel"/></button><strong>Gin Schnaps</strong><span className="version">0.8.7</span></div>
       <div className="document-tabs" role="tablist" aria-label="Open documents">{workspace.documents.map(doc => <div key={doc.key} className={`document-tab ${doc.key === workspace.active ? 'active' : ''}`}>
         <button role="tab" aria-selected={doc.key === workspace.active} title={doc.doc.name} aria-label={doc.doc.name} onClick={() => dispatch({ type: 'activate', key: doc.key })}><Icon name={doc.doc.topology === 'circular' ? 'circle' : 'linear'}/><span>{doc.doc.name}</span>{needsExport(doc) && <span className="dirty-dot" aria-label="Unexported changes">●</span>}</button>
         <button className="icon-button close-document" aria-label={`Close ${doc.doc.name}`} onClick={() => closeDocument(doc.key)}><Icon name="close" size={12}/></button>
@@ -476,8 +491,8 @@ export default function App() {
                 <Tool icon="sequence" title="Show the complementary strand" active={reverse} disabled={entry.view !== 'sequence'} onClick={() => setReverse(!reverse)}/>
               </div>}
               {entry.doc.sequence.length > 0 && entry.view === 'map' && <MapView entry={entry} onSelect={select} labels={labels}/>}
-              {entry.doc.sequence.length > 0 && entry.view === 'sequence' && <SequenceView key={entry.key} entry={entry} onSelect={select} reverse={reverse} labels={labels} onViewport={setViewport} onScroll={scrollTop => dispatch({ type: 'scroll', scrollTop })} onEditFeature={id => openEditor('feature', id)} onShowFeatures={() => dispatch({ type: 'view', view: 'features' })}/>}
-              {entry.doc.sequence.length > 0 && entry.view === 'split' && <SplitView key={`split-${entry.key}`} entry={entry} labels={labels} reverse={reverse} onSelect={select} onScroll={scrollTop=>dispatch({type:'scroll',scrollTop})} onEditFeature={id=>openEditor('feature',id)} onShowFeatures={()=>dispatch({type:'view',view:'features'})} onPresentation={presentation=>dispatch({type:'presentation',presentation})} onLabels={()=>setLabels(!labels)} onReverse={()=>setReverse(!reverse)}/>}
+              {entry.doc.sequence.length > 0 && entry.view === 'sequence' && <SequenceView key={entry.key} entry={entry} onSelect={select} reverse={reverse} labels={labels} onViewport={setViewport} onScroll={scrollTop => dispatch({ type: 'scroll', scrollTop })} onEditFeature={id => openEditor('feature', id)} onShowFeatures={() => dispatch({ type: 'view', view: 'features' })} onTypeBase={typeBase}/>}
+              {entry.doc.sequence.length > 0 && entry.view === 'split' && <SplitView key={`split-${entry.key}`} entry={entry} labels={labels} reverse={reverse} onSelect={select} onScroll={scrollTop=>dispatch({type:'scroll',scrollTop})} onEditFeature={id=>openEditor('feature',id)} onShowFeatures={()=>dispatch({type:'view',view:'features'})} onTypeBase={typeBase} onPresentation={presentation=>dispatch({type:'presentation',presentation})} onLabels={()=>setLabels(!labels)} onReverse={()=>setReverse(!reverse)}/>}
               {entry.view === 'features' && <FeatureTable key={entry.key} entry={entry} select={select} toggle={id => dispatch({ type: 'visibility', id })} edit={id => openEditor('feature', id)}/>}
               {entry.doc.sequence.length > 0 && entry.view === 'translation' && <TranslationPanel key={entry.key} entry={entry}/>}
               {entry.doc.sequence.length > 0 && entry.view === 'enzymes' && <RestrictionPanel key={entry.key} entry={entry} onSelect={s => { select(s); dispatch({ type: 'view', view: 'map' }); }}/>}
@@ -498,13 +513,13 @@ export default function App() {
       </main>
     </div>
     <footer className="status-bar" role="status"><span>{loading ? "Reading file…" : entry ? `${number(entry.doc.sequence.length)} bp · DNA ${entry.doc.topology === 'circular' ? "circular" : "linear"}` : "No document"}</span><span className="status-selection" data-testid="selection-status">{range ? `Selection ${number(range.start)} → ${number(range.end)} · ${number(entry!.selection!.length)} bp${range.end < range.start ? " · crosses origin" : ''}` : "No selection"}</span><span className="flex-spacer"/><button className="recovery-toggle" disabled={nativeBusy || loading} onClick={() => { if (!document.querySelector('[role="dialog"]') && !importBusy.current) setBackupOpen(true); }}>Backups</button><button className="recovery-toggle" onClick={() => setRecoveryOpen(true)}>Recovery</button>{draftEntries.length > 0 && <span>{draftEntries.length} PCR draft(s) not saved</span>}<button className="recovery-toggle" onClick={() => setHelpOpen(true)}>Help</button></footer>
-    {backupOpen && <DocumentBackupDialog workspace={workspace} inputs={pcrInputs} version="0.8.6" onClose={() => setBackupOpen(false)} onRestore={backup => {
+    {backupOpen && <DocumentBackupDialog workspace={workspace} inputs={pcrInputs} version="0.8.7" onClose={() => setBackupOpen(false)} onRestore={backup => {
       const restored = appendDocumentBackup(workspaceRef.current, pcrInputs, backup);
       dispatch({ type: 'append-backup', expectedNextKey: workspaceRef.current.nextKey, workspace: restored.workspace });
       setPcrInputs(restored.inputs); setBackupOpen(false); setPendingExport(null);
       setMessage({text:'Backup restored as new unsaved tabs. Existing documents are unchanged.',error:false});
     }}/>}
-    {helpOpen && <HelpDialog version="0.8.6" onClose={() => setHelpOpen(false)}/>}
+    {helpOpen && <HelpDialog version="0.8.7" onClose={() => setHelpOpen(false)}/>}
     {pasteDialog && <PasteDialog doc={pasteDialog.doc} selection={pasteDialog.selection} initialText={pasteDialog.text} copied={copiedDNA} canCreate={workspace.documents.length < MAX_OPEN_DOCUMENTS} onClose={() => setPasteDialog(null)} onApply={applyPaste} onCreate={createPastedDocument}/>}
     {dialog && entry && <EditDialog key={`${dialog.key}-${dialog.mode}-${dialog.featureId ?? "new"}`} doc={entry.doc} selection={entry.selection} mode={dialog.mode} featureId={dialog.featureId} onClose={() => setDialog(null)} onApply={applyEdit}/>}
     <RecoveryPanel workspace={workspace} modalOpen={recoveryOpen} onClose={() => setRecoveryOpen(false)} restore={snapshot => {

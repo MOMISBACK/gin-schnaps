@@ -1,5 +1,19 @@
 # Changelog
 
+## 0.8.7 — exact joins, nucleotide typing and map navigation (preview)
+
+- Allow non-wrapping edits with exact disjoint annotations while preserving declared
+  segment order and strand; inserted DNA inside an unannotated gap is never
+  silently absorbed by an annotation. Obsolete qualifiers are archived for review.
+  Unresolved locations and origin-crossing splices with disjoint joins stay guarded.
+- **Type bases** in Sequence and Split: explicitly activate typing, select bases
+  and enter IUPAC nucleotides to replace them; undo restores the original document.
+- Mouse-wheel or trackpad zoom on Map and Split (50–600%, cursor-anchored), pan
+  by dragging empty canvas or Shift/middle drag, and Fit to recenter.
+- Browser regression and randomized exact-coordinate oracle.
+  No new analysis algorithm, schema migration or third-party package.
+
+
 ## 0.8.6 — portable document backups (preview)
 
 - Export all open native documents, oligos, creation records and separate PCR

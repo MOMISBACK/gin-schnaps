@@ -7,15 +7,16 @@ import { baseX, rowAtOffset, sequenceRows, spanPixels } from '../view/sequence-l
 import { useAnalysis } from './analysis/useAnalysis';
 import { type GeneticCode } from '../core/translation';
 export const ROW_HEIGHT = 96; // minimum, not a fixed-height assumption
-export function SequenceView({ entry, onSelect, onScroll, reverse, labels, onViewport, onEditFeature, onShowFeatures }: {
+export function SequenceView({ entry, onSelect, onScroll, reverse, labels, onViewport, onEditFeature, onShowFeatures, onTypeBase }: {
   entry: OpenDocument; onSelect: (s: Selection) => void; onScroll: (n: number) => void; reverse: boolean; labels: boolean;
-  onViewport: (range: { start: number; end: number }) => void; onEditFeature?: (id: string) => void; onShowFeatures?: () => void;
+  onViewport: (range: { start: number; end: number }) => void; onEditFeature?: (id: string) => void; onShowFeatures?: () => void; onTypeBase?: (base: string) => void;
 }) {
   const { ref, width, height } = useSize<HTMLDivElement>();
   const [top, setTop] = useState(entry.scrollTop), [charWidth, setCharWidth] = useState(8.43);
   const [lineWidth, setLineWidth] = useState(0), [frame, setFrame] = useState('none'), [code, setCode] = useState<GeneticCode>(1);
   const measure = useRef<HTMLSpanElement>(null), anchor = useRef<number | null>(null), keyboardAnchor = useRef<SelectionAnchor | null>(null);
   const [reveal, setReveal] = useState<number | null>(null);
+  const [typing, setTyping] = useState(false);
   const sequence = entry.doc.sequence, size = sequence.length;
   const job = useAnalysis(entry, { kind: 'translation', options: { mode: 'six-frames', code, region: null } });
   const protein = job.result?.kind === 'translation' ? job.result.proteins.find(p => `${p.strand === 1 ? '+' : '-'}${p.offset + 1}` === frame) : undefined;
@@ -36,15 +37,16 @@ export function SequenceView({ entry, onSelect, onScroll, reverse, labels, onVie
   useEffect(() => { const end = () => { anchor.current = null; }; window.addEventListener('pointerup', end); window.addEventListener('pointercancel', end); return () => { window.removeEventListener('pointerup', end); window.removeEventListener('pointercancel', end); }; }, []);
   const selectTo = (position: number) => { keyboardAnchor.current = null; const start = Math.min(anchor.current ?? position, position); onSelect({ start, length: Math.abs(position - (anchor.current ?? position)) + 1 }); };
   return <div className="sequence-container">
-    <div className="sequence-settings"><label>Bases per line <select aria-label="Bases per line" value={lineWidth} onChange={e => setLineWidth(Number(e.target.value))}><option value={0}>Auto</option>{[50,60,80,100].map(n => <option key={n} value={n}>{n}</option>)}</select></label>
+    <div className="sequence-settings"><button type="button" className={typing ? "sequence-edit-toggle active" : "sequence-edit-toggle"} aria-label="Direct DNA typing" aria-pressed={typing} title="Enable typing into the reference DNA after selecting bases" onClick={() => { setTyping(t => !t); ref.current?.focus(); }}>{typing ? "Typing ON" : "Type bases"}</button><label>Bases per line <select aria-label="Bases per line" value={lineWidth} onChange={e => setLineWidth(Number(e.target.value))}><option value={0}>Auto</option>{[50,60,80,100].map(n => <option key={n} value={n}>{n}</option>)}</select></label>
       <label>Translation track <select aria-label="Translation track" value={frame} onChange={e => setFrame(e.target.value)}><option value="none">None</option>{['+1','+2','+3','-1','-2','-3'].map(f => <option key={f} value={f}>Frame {f}</option>)}</select></label>
       {frame !== 'none' && <label>Code <select aria-label="Track genetic code" value={code} onChange={e => setCode(Number(e.target.value) as GeneticCode)}><option value={1}>1 · Standard</option><option value={11}>11 · Bacteria / Archaea / plastids</option></select></label>}
+      {typing && <span className="field-note" role="status">Select bases, then type A/C/G/T or other IUPAC letters to replace them. Ctrl/⌘Z to undo.</span>}
       {frame !== 'none' && <span className="field-note" title="Reading-frame translation, not a CDS prediction">{job.busy ? 'Translating…' : '* stop · X unresolved'}</span>}
     </div>
     {frame !== 'none' && job.error && <p className="analysis-error" role="status">{job.error}</p>}
-    <div ref={ref} className="sequence-viewport" data-testid="sequence-view" tabIndex={0} aria-label="Sequence. Select a region, then use Edit bases to edit."
+    <div ref={ref} className="sequence-viewport" data-testid="sequence-view" tabIndex={0} aria-label="Sequence. Select a region. Enable Type bases to enter DNA directly."
       onScroll={e => { setTop(e.currentTarget.scrollTop); onScroll(e.currentTarget.scrollTop); }}
-      onKeyDown={e => { if (e.target !== e.currentTarget || e.ctrlKey || e.metaKey || e.altKey) return; if (e.key === 'ArrowRight' || e.key === 'ArrowLeft') { e.preventDefault(); const moved = moveSelection(entry.selection, size, entry.doc.topology === 'circular', e.key === 'ArrowRight' ? 1 : -1, e.shiftKey, keyboardAnchor.current); keyboardAnchor.current = moved.state; setReveal(moved.reveal); onSelect(moved.selection); } }}>
+      onKeyDown={e => { if (e.target !== e.currentTarget || e.ctrlKey || e.metaKey || e.altKey || e.nativeEvent.isComposing) return; if (typing && /^[ACGTRYSWKMBDHVN]$/i.test(e.key)) { e.preventDefault(); onTypeBase?.(e.key.toUpperCase()); return; } if (e.key === 'ArrowRight' || e.key === 'ArrowLeft') { e.preventDefault(); const moved = moveSelection(entry.selection, size, entry.doc.topology === 'circular', e.key === 'ArrowRight' ? 1 : -1, e.shiftKey, keyboardAnchor.current); keyboardAnchor.current = moved.state; setReveal(moved.reveal); onSelect(moved.selection); } }}>
       <span className="character-measure" ref={measure}>M</span>
       <div className="virtual-sequence" data-row-count={rows.length} style={{ height: totalHeight, minWidth: baseX(bpl, charWidth) + 56 }}>
         {rows.slice(first, last).map((row, index) => {

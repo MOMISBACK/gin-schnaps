@@ -171,3 +171,27 @@ The backup includes PCR drafts separately from saved setups; the ordinary Native
 export and automatic recovery still require **Save PCR setup** to retain them.
 Check download receipt, keep the file private, and save restored documents explicitly.
 See [portable backups](DOCUMENT_BACKUPS.md) for bounds and exclusions.
+
+## Direct typing and exact joins
+
+In **Sequence** or **Split**, select one or more reference-strand bases and
+enable **Type bases**. While **Typing ON** is visible, type one uppercase or
+lowercase IUPAC DNA letter to replace the selected region. The selection moves
+to the next base. Undo restores the prior sequence and all annotations.
+Turn typing off to navigate without changing bases. Without a selection,
+typing never inserts DNA implicitly.
+
+Exact joined annotations retain their separate parts and original order
+during ordinary insertions, substitutions and deletions. New DNA in a gap
+does not become part of a CDS. Obsolete translations are archived for review.
+Unresolved descriptors remain read-only; an origin-crossing splice with a
+disjoint join is refused. Rotate the origin first when an equivalent safe
+non-wrapping edit is possible.
+
+## Map navigation by mouse and trackpad
+
+In Map or Split, use the mouse wheel or trackpad gesture to zoom at the
+pointer location (50–600%). Drag an empty area, Shift+drag, or middle-button
+drag to move the map. Use **Fit** to return to 100% and recenter. These controls
+change the view only; they do not rotate the DNA sequence or alter saved
+coordinates. Ordinary annotation selection remains available.

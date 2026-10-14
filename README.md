@@ -36,8 +36,8 @@ native compatibility with every older macOS version has not been established.
 
 ## What it does
 
-- Circular/linear maps, sequence tracks and a resizable side-by-side workspace.
-- Select all, cut/copy/paste and undo/redo with document-aware keyboard controls.
+- Circular/linear maps with mouse-wheel zoom and drag panning, sequence tracks and a resizable side-by-side workspace.
+- Select all, cut/copy/paste, direct IUPAC base typing in an explicit edit mode and undo/redo with document-aware keyboard controls.
 - Cross-document base-sequence copy/paste with preview, insertion/replacement and undo.
 - Guarded sequence/annotation editing, undo/redo, motif search, extraction,
   reverse complement, origin changes, and SVG/PNG map export.

@@ -7,10 +7,10 @@ import { Minimap } from './Minimap';
 
 export function splitPercent(value: number): number { return Math.max(35, Math.min(65, value)); }
 /** Two views of one document, never two independent sequence copies. */
-export function SplitView({ entry, labels, reverse, onSelect, onScroll, onEditFeature, onShowFeatures, onPresentation, onLabels, onReverse }: {
+export function SplitView({ entry, labels, reverse, onSelect, onScroll, onEditFeature, onShowFeatures, onPresentation, onLabels, onReverse, onTypeBase }: {
   entry: OpenDocument; labels: boolean; reverse: boolean; onSelect: (s: Selection) => void;
   onScroll: (n: number) => void; onEditFeature: (id: string) => void; onShowFeatures: () => void;
-  onPresentation: (p: 'circular' | 'linear') => void; onLabels: () => void; onReverse: () => void;
+  onTypeBase: (base: string) => void; onPresentation: (p: 'circular' | 'linear') => void; onLabels: () => void; onReverse: () => void;
 }) {
   const root = useRef<HTMLDivElement>(null), left = useRef<HTMLElement>(null);
   const [percent, setPercent] = useState(50), [viewport, setViewport] = useState({ start: 0, end: 1 });
@@ -23,7 +23,7 @@ export function SplitView({ entry, labels, reverse, onSelect, onScroll, onEditFe
   return <div ref={root} className="split-workspace" data-testid="split-view" style={{ gridTemplateColumns: `minmax(0,${percent}fr) 8px minmax(0,${100-percent}fr)` }}>
     <section className="split-pane" aria-label="DNA sequence pane" ref={left}>
       <header className="split-heading"><strong>SEQUENCE</strong><button aria-pressed={reverse} onClick={onReverse} title="Show complementary strand">Double strand</button></header>
-      <SequenceView entry={entry} onSelect={onSelect} reverse={reverse} labels={labels} onViewport={setViewport} onScroll={onScroll} onEditFeature={onEditFeature} onShowFeatures={onShowFeatures}/>
+      <SequenceView entry={entry} onSelect={onSelect} reverse={reverse} labels={labels} onViewport={setViewport} onScroll={onScroll} onEditFeature={onEditFeature} onShowFeatures={onShowFeatures} onTypeBase={onTypeBase}/>
       <Minimap entry={entry} viewport={viewport} onNavigate={fraction => { const node = left.current?.querySelector<HTMLElement>('.sequence-viewport'); if (node) node.scrollTop = fraction * (node.scrollHeight - node.clientHeight); }}/>
     </section>
     <div className="split-divider" role="separator" tabIndex={0} aria-label="Resize sequence and map" aria-orientation="vertical" aria-valuemin={35} aria-valuemax={65} aria-valuenow={Math.round(percent)}

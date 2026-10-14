@@ -87,5 +87,5 @@ test('paste obeys retained history limits, no-op semantics, and unsafe-location 
   assert.equal(pasteIntoDocument(doc, 'AAAA', { mode: 'replace', start: 1, end: 4 }).doc, doc);
   doc.features = [{ id: 'joined', name: 'join', type: 'misc_feature', strand: 1, color: '#112233',
     segments: [{ start: 1, end: 4 }, { start: 8, end: 12 }], reviewRequired: false, archivedQualifiers: [], qualifiers: [] }];
-  assert.throws(() => pasteIntoDocument(doc, 'A', { mode: 'insert', start: 1, end: 1 }), /disjoint or unresolved/);
+  assert.deepEqual(pasteIntoDocument(doc, 'A', { mode: 'insert', start: 1, end: 1 }).doc.features[0].segments,[{start:2,end:5},{start:9,end:13}]);
 });

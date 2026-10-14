@@ -82,3 +82,11 @@
 .pcr-creation-record{background:#fff;border:1px solid var(--divider);border-radius:4px;padding:12px;margin:16px 0;max-width:850px}.pcr-creation-record h3{font-size:13px;margin-bottom:6px}.pcr-creation-record p{margin:6px 0}.pcr-creation-record details{margin-top:8px}.pcr-creation-record summary{cursor:pointer}.pcr-transfer-report{max-height:200px;overflow:auto;overflow-wrap:anywhere}.hash-value{overflow-wrap:anywhere;font-size:11px}
 
 .backup-dialog{max-width:720px}.backup-document-list{max-height:180px;overflow:auto;overflow-wrap:anywhere}.backup-dialog hr{border:0;border-top:1px solid var(--divider);margin:16px 0}.backup-dialog .dialog-body>p{margin-bottom:10px}
+
+/* Mouse navigation changes the rendering only, not molecular coordinates. */
+.map-viewport .map-scroll{position:relative;overflow:hidden;touch-action:none;cursor:grab;outline-offset:-3px}
+.map-viewport .map-scroll:active{cursor:grabbing}
+.map-viewport .map-render{position:absolute;left:50%;top:50%;margin:0;will-change:transform}
+.map-gesture-hint{font-size:10px;color:var(--muted);white-space:nowrap}
+.sequence-edit-toggle.active{background:#e7f0ff;border-color:#276bad;color:#11589b}
+@media(max-width:1150px){.map-gesture-hint{display:none}}
