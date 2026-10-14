@@ -21,6 +21,8 @@ required = {
     'oversized_save_is_rejected_before_file_or_backup_changes',
     'unicode_and_space_paths_roundtrip_with_exact_predecessor_backup',
     'ordinary_lock_names_remain_compatible_with_previous_versions',
+    'portable_backups_have_a_separate_bounded_read_only_grant',
+    'oversized_portable_backup_never_creates_a_file_grant',
 }
 if platform.system() != 'Windows':
     required |= {'valid_long_filename_does_not_overflow_lock_filename_limit',
