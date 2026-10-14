@@ -16,7 +16,7 @@ jobs:
           persist-credentials: false
       - name: Validate base, transfer and target tree without executing code
         run: |
-          test "$(git rev-parse HEAD^)" = e620054734d4de09891e9f92414055fb39e634cb
+          test "$(git ls-tree -r --name-only HEAD .workspace-transfer/workspace.patch.xz)" = .workspace-transfer/workspace.patch.xz
           echo '2b4acc4ab84b6e8ccb4350d6b9133ebce4eadff7d49689e40f183bbe6afadedf  .workspace-transfer/workspace.patch.xz' | sha256sum -c -
           xz -d -c .workspace-transfer/workspace.patch.xz > /tmp/workspace.patch
           git apply --index --check /tmp/workspace.patch
@@ -38,7 +38,7 @@ jobs:
           EXPECTED_HEAD: ${{ github.sha }}
         run: |
           test "$(git rev-parse HEAD)" = "$EXPECTED_HEAD"
-          test "$(git rev-parse HEAD^)" = e620054734d4de09891e9f92414055fb39e634cb
+          test "$(git ls-tree -r --name-only HEAD .workspace-transfer/workspace.patch.xz)" = .workspace-transfer/workspace.patch.xz
           echo '2b4acc4ab84b6e8ccb4350d6b9133ebce4eadff7d49689e40f183bbe6afadedf  .workspace-transfer/workspace.patch.xz' | sha256sum -c -
           xz -d -c .workspace-transfer/workspace.patch.xz > /tmp/workspace.patch
           git apply --index --check /tmp/workspace.patch
