@@ -24,6 +24,16 @@ with sync_playwright() as p:
     def native():
         with page.expect_download() as d:b('Export native format (⌘/Ctrl S)').click()
         result=json.loads(Path(d.value.path()).read_text());dismiss();return result
+    def expect_empty_editor():
+        # Empty working documents now retain the sequence editor so they can be
+        # refilled directly. Assert state, not the retired placeholder heading.
+        expect(page.get_by_test_id('split-view')).to_be_visible()
+        expect(page.get_by_test_id('sequence-view')).to_be_visible()
+        expect(page.locator('.virtual-sequence')).to_have_attribute('data-row-count', '0')
+        expect(page.locator('.base')).to_have_count(0)
+        expect(b('Type DNA')).to_be_enabled()
+        expect(b('Type DNA')).to_have_attribute('aria-pressed', 'false')
+        expect(page.get_by_test_id('map-view')).to_have_count(0)
     def choose(a,z):
         page.get_by_label('Selection start',exact=True).fill(str(a));page.get_by_label('Selection end',exact=True).fill(str(z));b('Select').click()
     def export_format(fmt,label,selection=False):
@@ -68,12 +78,12 @@ with sync_playwright() as p:
         # Ctrl+A is required even on macOS, independently of the Cmd aliases.
         page.get_by_test_id('sequence-view').focus();page.keyboard.press('Control+a')
         expect(page.get_by_test_id('selection-status')).to_contain_text('4,800 bp')
-        page.keyboard.press('Control+r');expect(page.get_by_role('heading',name='Empty sequence',exact=True)).to_be_visible();dismiss()
+        page.keyboard.press('Control+r');expect_empty_editor();dismiss()
         empty=native();assert empty['sequence']=='' and empty['features']==[] and empty['schemaVersion']==6
         assert empty['topology']=='linear'
         mark('Ctrl+A then Ctrl+R cuts the entire molecule into a saveable empty draft without browser reload')
         page.keyboard.press('Control+z');expect(page.get_by_test_id('split-view')).to_be_visible();assert native()==before
-        page.keyboard.press('Control+Shift+z');expect(page.get_by_role('heading',name='Empty sequence')).to_be_visible()
+        page.keyboard.press('Control+Shift+z');expect_empty_editor();assert native()==empty
         page.keyboard.press('Control+z');assert native()==before
         mark('Ctrl+Z and Ctrl+Shift+Z restore the exact original sequence, features and selection')
         # Partial circular cut; read the real clipboard through the normal Paste path.
@@ -88,9 +98,9 @@ with sync_playwright() as p:
         mark('Ctrl+R delivers the exact origin-spanning bases to the system clipboard for another document')
         page.get_by_role('tab',name='pDemo_4800',exact=True).click();page.keyboard.press('Control+z');assert native()==before
         page.get_by_test_id('sequence-view').focus();page.keyboard.press('Control+a');page.keyboard.press('Control+r');dismiss()
-        b('Paste DNA').click();page.get_by_label('DNA to paste',exact=True).fill('GATTACA');b('Apply paste').click();dismiss()
+        b('Paste DNA (⌘/Ctrl V)').click();page.get_by_label('DNA to paste',exact=True).fill('GATTACA');b('Apply paste').click();dismiss()
         assert native()['sequence']=='GATTACA'
-        page.keyboard.press('Control+z');expect(page.get_by_role('heading',name='Empty sequence')).to_be_visible()
+        page.keyboard.press('Control+z');expect_empty_editor();assert native()==empty
         page.keyboard.press('Control+z');assert native()==before
         mark('An empty draft accepts paste; two undos restore the whole cut-and-paste history')
         # A text-field selection/undo never targets the molecule.
