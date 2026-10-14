@@ -1,3 +1,4 @@
+import { PcrProductDialog, type ProductSelection, type ProductCreated } from './PcrProductDialog';
 import { executeCommand, type CommandResult } from '../../domain/commands';
 import { type PrimerCommand } from '../../domain/primer-commands';
 import { newDocumentId } from '../../domain/document-operations';
@@ -13,7 +14,8 @@ import { type PcrOptions } from '../../core/pcr';
 import { useAnalysis } from './useAnalysis';
 import { AnalysisControls, fasta, Pager, saveAnalysisFile, Warnings } from './common';
 
-export function PcrPanel({ entry, input, setInput, onSelect, onCommit }: { entry: OpenDocument; input: PcrOptions; setInput: (p: PcrOptions) => void; onSelect: (s: Selection) => void; onCommit:(result:CommandResult)=>void }) {
+export function PcrPanel({ entry, input, setInput, onSelect, onCommit, onCreateProduct }: { entry: OpenDocument; input: PcrOptions; setInput: (p: PcrOptions) => void; onSelect: (s: Selection) => void; onCommit:(result:CommandResult)=>void; onCreateProduct:ProductCreated }) {
+  const [selectedProduct, setSelectedProduct] = useState<ProductSelection | null>(null);
   const [libraryError,setLibraryError]=useState('');
   const stored = recipeOptions(entry.doc), draftChanged = hasPcrDraft(entry.doc, input);
   const commit = (command: PrimerCommand): boolean => {
@@ -57,9 +59,10 @@ export function PcrPanel({ entry, input, setInput, onSelect, onCommit }: { entry
       <div className="analysis-result-bar"><strong>{result.products.length} theoretical product(s)</strong><span>{result.sites.length} exact site(s){result.excludedByLength > 0 && ` · ${result.excludedByLength} outside size bounds`}{result.excludedOverlaps > 0 && ` · ${result.excludedOverlaps} overlap/multiple-turn combinations excluded`}</span></div>
       {!result.products.length && <p className="analysis-warning">No product within these bounds (exact-match model).</p>}
       {result.products.length > 1 && <p className="analysis-warning">Multiple products. Check the intended primer pair and template region.</p>}
-      <div className="analysis-table-wrap"><table><thead><tr><th>Product</th><th>Primer → / ←</th><th>Total length</th><th>Template region</th><th>Export</th></tr></thead><tbody>{result.products.map((p, i) => <tr key={i}><td>{i + 1}{p.samePrimer && <span className="review-badge">Same primer</span>}</td><td>{input.primers[p.forward.primer].name} / {input.primers[p.reverse.primer].name}</td><td>{p.sequence.length} bp</td><td>{p.start + 1} → {(p.start + p.templateLength - 1) % entry.doc.sequence.length + 1}{p.crossesOrigin ? " (origin)" : ''}</td><td><button aria-label={`Export PCR product ${i + 1}`} onClick={() => saveAnalysisFile(`${entry.doc.name}-PCR-${i + 1}.fasta`, fasta(`${entry.doc.name}|PCR_${i + 1}|theoretical|tails_included`, p.sequence), 'text/plain;charset=utf-8')}>FASTA</button></td></tr>)}</tbody></table></div>
+      <div className="analysis-table-wrap"><table><thead><tr><th>Product</th><th>Primer → / ←</th><th>Total length</th><th>Template region</th><th>Export</th></tr></thead><tbody>{result.products.map((p, i) => <tr key={i}><td>{i + 1}{p.samePrimer && <span className="review-badge">Same primer</span>}</td><td>{input.primers[p.forward.primer].name} / {input.primers[p.reverse.primer].name}</td><td>{p.sequence.length} bp</td><td>{p.start + 1} → {(p.start + p.templateLength - 1) % entry.doc.sequence.length + 1}{p.crossesOrigin ? " (origin)" : ''}</td><td><button aria-label={`Export PCR product ${i + 1}`} onClick={() => saveAnalysisFile(`${entry.doc.name}-PCR-${i + 1}.fasta`, fasta(`${entry.doc.name}|PCR_${i + 1}|theoretical|tails_included`, p.sequence), 'text/plain;charset=utf-8')}>FASTA</button><button aria-label={`Create document from PCR product ${i + 1}`} onClick={() => { if (job.report?.request) setSelectedProduct({ entry, request: job.report.request, response: job.report.response, index: i }); }}>Create…</button></td></tr>)}</tbody></table></div>
       <h3 className="analysis-subheading">Exact annealing sites</h3><div className="analysis-table-wrap"><table><thead><tr><th>Primer</th><th>Start</th><th>Annealing length</th><th>Extension direction</th><th>Map</th></tr></thead><tbody>{result.sites.slice(displayPage * 100, (displayPage + 1) * 100).map((s, i) => <tr key={i}><td>{input.primers[s.primer].name}</td><td>{s.start + 1}</td><td>{s.length} nt</td><td>{s.orientation === 1 ? '→ (+)' : '← (−)'}</td><td><button aria-label={`View annealing ${displayPage * 100 + i + 1}`} onClick={() => onSelect({ start: s.start, length: s.length })}>View</button></td></tr>)}</tbody></table></div><Pager page={displayPage} total={result.sites.length} setPage={setPage}/>
       <p className="field-note">FASTA: sequence only.</p>
     </div>}
+    {selectedProduct && <PcrProductDialog selected={selectedProduct} current={selectedProduct.entry.doc === entry.doc && selectedProduct.entry.revision === entry.revision && selectedProduct.request.task.kind === 'pcr' && JSON.stringify(selectedProduct.request.task.options) === JSON.stringify(input)} onClose={() => setSelectedProduct(null)} onCreate={onCreateProduct}/>}
   </section>;
 }

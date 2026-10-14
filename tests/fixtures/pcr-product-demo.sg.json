@@ -1,0 +1,130 @@
+{
+  "schemaVersion": 5,
+  "id": "product-example",
+  "name": "PCR_template",
+  "description": "Synthetic template for PCR-to-document tests. Expected product: 210 bp including 6 nt forward tail and 4 nt reverse tail.",
+  "sequence": "CTTCTTCCATACTAAATTTTTCCGATGTGGGTGGCTGCTGCTGCTGCTGCTGCTGCTTAATGAGGCACCTTTCCTTGACACCGGCGTACACTTTGGCCGGGAATTCTGCTGTCGGTATAAACGCACGTTATGGACGGCCGCAACTAACTCTTTGAGCGGCGCAGCCGTAGAAGGTGGTTGGGGGGCTTGCGGTCAGGGCTCGAATGCGAATTTAGGTACAGGATCCACCATGTATGTTACCGTCCAATTTCAACAGGTCGCGCATAGACGGCGTTTGGAGGAGTTCTACGTATGGTAATTACGTCATACTTGGCCCGTATGGTCTCGATCATAATATTTCTTATTCTTCTTCTTCTTCTT",
+  "topology": "circular",
+  "features": [
+    {
+      "id": "Full_region",
+      "name": "Full_region",
+      "type": "misc_feature",
+      "strand": -1,
+      "color": "#5481AF",
+      "segments": [
+        {
+          "start": 95,
+          "end": 115
+        }
+      ],
+      "qualifiers": [
+        {
+          "key": "note",
+          "value": "Synthetic software test; no biological validation."
+        }
+      ],
+      "archivedQualifiers": [],
+      "reviewRequired": false
+    },
+    {
+      "id": "Clipped_region",
+      "name": "Clipped_region",
+      "type": "misc_feature",
+      "strand": 1,
+      "color": "#5481AF",
+      "segments": [
+        {
+          "start": 65,
+          "end": 90
+        }
+      ],
+      "qualifiers": [
+        {
+          "key": "note",
+          "value": "Synthetic software test; no biological validation."
+        }
+      ],
+      "archivedQualifiers": [],
+      "reviewRequired": false
+    },
+    {
+      "id": "Joined_region",
+      "name": "Joined_region",
+      "type": "misc_feature",
+      "strand": 1,
+      "color": "#5481AF",
+      "segments": [
+        {
+          "start": 125,
+          "end": 140
+        },
+        {
+          "start": 165,
+          "end": 185
+        }
+      ],
+      "qualifiers": [
+        {
+          "key": "note",
+          "value": "Synthetic software test; no biological validation."
+        }
+      ],
+      "archivedQualifiers": [],
+      "reviewRequired": false
+    },
+    {
+      "id": "Outside",
+      "name": "Outside",
+      "type": "misc_feature",
+      "strand": 1,
+      "color": "#5481AF",
+      "segments": [
+        {
+          "start": 0,
+          "end": 20
+        }
+      ],
+      "qualifiers": [
+        {
+          "key": "note",
+          "value": "Synthetic software test; no biological validation."
+        }
+      ],
+      "archivedQualifiers": [],
+      "reviewRequired": false
+    }
+  ],
+  "primers": [
+    {
+      "id": "0",
+      "name": "Demo_A",
+      "sequence": "GGTCTCTGACACCGGCGTACACTTTG",
+      "notes": "Synthetic primer",
+      "provenance": "manual"
+    },
+    {
+      "id": "1",
+      "name": "Demo_B",
+      "sequence": "TCAGAACGCCGTCTATGCGCGACC",
+      "notes": "Synthetic primer",
+      "provenance": "manual"
+    }
+  ],
+  "pcrRecipe": {
+    "primerIds": [
+      "0",
+      "1"
+    ],
+    "annealingStarts": [
+      6,
+      4
+    ],
+    "minLength": 1,
+    "maxLength": 100000
+  },
+  "provenance": "synthetic-demo",
+  "sourceArchive": null,
+  "history": [],
+  "historyOmitted": 0
+}

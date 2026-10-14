@@ -31,7 +31,7 @@ fn paths(app:&tauri::AppHandle, save:bool, name:&str)->Result<Option<PathBuf>>{
             let text=std::fs::read_to_string(&control).unwrap_or_default();
             let _=std::fs::remove_file(control);
             if text=="cancel"{return Ok(None);}
-            let allowed=if save{["first.sg.json","second.sg.json","report.fasta","report.gb","invalid.sg.json"].as_slice()}else{["first.sg.json","source.fa"].as_slice()};
+            let allowed=if save{["first.sg.json","second.sg.json","product.sg.json","report.fasta","report.gb","invalid.sg.json"].as_slice()}else{["first.sg.json","source.fa","product.sg.json"].as_slice()};
             if !allowed.contains(&text.as_str()){return Err("Test picker only accepts predefined fixture filenames".into());}
             return Ok(Some(dir.join(text)));
         }
@@ -111,7 +111,7 @@ fn desktop_close(app:tauri::AppHandle,state:tauri::State<'_,Host>)->Result<()>{
 #[tauri::command]
 fn desktop_info(state:tauri::State<'_,Host>)->Result<Value>{
     let files=state.files.lock().map_err(|_|"File service unavailable")?;
-    Ok(json!({"version":"0.8.4","dataDirectory":files.data_dir.to_string_lossy(),"signing":"Development preview; not Developer-ID notarized","scientificEngine":"TypeScript"}))
+    Ok(json!({"version":"0.8.5","dataDirectory":files.data_dir.to_string_lossy(),"signing":"Development preview; not Developer-ID notarized","scientificEngine":"TypeScript"}))
 }
 #[tauri::command]
 fn probe_report(app:tauri::AppHandle,state:tauri::State<'_,Host>,report:Value)->Result<()>{
@@ -126,7 +126,7 @@ fn io_test_control(app:tauri::AppHandle,state:tauri::State<'_,Host>,action:Strin
     if !state.test{return Err("Test control is not enabled".into());}
     let dir=state.files.lock().map_err(|_|"File service unavailable")?.data_dir.clone();
     match action.as_str(){
-        "pick"=>{let v=value.ok_or("Expected fixture name")?;if !["first.sg.json","second.sg.json","invalid.sg.json","report.fasta","report.gb","source.fa","cancel"].contains(&v.as_str()){return Err("Invalid fixture".into());}std::fs::write(dir.join("test-pick.txt"),v).map_err(|e|e.to_string())?;Ok(Value::Null)}
+        "pick"=>{let v=value.ok_or("Expected fixture name")?;if !["first.sg.json","second.sg.json","product.sg.json","invalid.sg.json","report.fasta","report.gb","source.fa","cancel"].contains(&v.as_str()){return Err("Invalid fixture".into());}std::fs::write(dir.join("test-pick.txt"),v).map_err(|e|e.to_string())?;Ok(Value::Null)}
         "external-change"=>{std::fs::write(dir.join("first.sg.json"),"external-writer").map_err(|e|e.to_string())?;Ok(Value::Null)}
         "stage"=>{let p=dir.join("test-stage");if let Some(v)=value{if v!="restoring"{return Err("Invalid phase".into());}std::fs::write(&p,&v).map_err(|e|e.to_string())?;}Ok(json!(std::fs::read_to_string(p).unwrap_or_default()))}
         "read-recovery"=>Ok(state.files.lock().map_err(|_|"File service unavailable")?.recovery()?),
@@ -134,6 +134,7 @@ fn io_test_control(app:tauri::AppHandle,state:tauri::State<'_,Host>,action:Strin
         "read-source"=>Ok(json!(std::fs::read_to_string(dir.join("source.fa")).map_err(|e|e.to_string())?)),
         "read-backup"=>{let p=files::checked_path(&dir.join("first.sg.json"))?;let backup=dir.join("backups").join(format!("{}.sg.json",files::hash(p.to_string_lossy().as_bytes())));Ok(json!(std::fs::read_to_string(backup).map_err(|e|e.to_string())?))}
         "read-first"=>Ok(json!(String::from_utf8(files::read_bounded(&dir.join("first.sg.json"),files::DOCUMENT_LIMIT)?).map_err(|e|e.to_string())?)),
+        "read-product"=>Ok(json!(String::from_utf8(files::read_bounded(&dir.join("product.sg.json"),files::DOCUMENT_LIMIT)?).map_err(|e|e.to_string())?)),
         "read-second"=>Ok(json!(String::from_utf8(files::read_bounded(&dir.join("second.sg.json"),files::DOCUMENT_LIMIT)?).map_err(|e|e.to_string())?)),
         "close-request"=>{send_action(&app,"quit");Ok(Value::Null)}
         "report"=>{let text=value.ok_or("Missing report")?;if text.len()>16000{return Err("Oversized report".into());}let r:Value=serde_json::from_str(&text).map_err(|e|e.to_string())?;println!("GIN_SCHNAPS_IO_REPORT={r}");if r["success"]!=true{state.exiting.store(true,Ordering::SeqCst);app.exit(1);}Ok(Value::Null)}

@@ -54,7 +54,7 @@ export function exportSequenceFile(input: SequenceDocument, format: SequenceForm
     if (!doc.primers.length) throw new Error('No saved oligos to export.');
     const text=doc.primers.map((p,i)=>`>${stem(p.name)}_${i+1} ${oneLine(p.name)}\n${lines(p.sequence)}\n`).join('');
     return {text,filename:stem(doc.name)+'-oligos.fasta',exportedFeatures:0,
-      warnings:['Full oligo sequences, 5′→3′. Notes, hybridization sites and PCR setup are not included.']};
+      warnings:['Full oligo sequences, 5′→3′. Notes, hybridization sites and PCR setup are not included.', ...(doc.creation ? ['The structured PCR creation record is not included. Keep .sg.json.'] : [])]};
   }
   if (!doc.sequence.length) throw new Error('The document has no sequence. Save .sg.json, or paste DNA before interchange export.');
   const sequence=selection ? selectedSequence(doc,selection) : doc.sequence;
@@ -62,6 +62,7 @@ export function exportSequenceFile(input: SequenceDocument, format: SequenceForm
   const suffix=range?`-${range.start}-${range.end}`:'';
   const name=stem(doc.name)+suffix;
   const warnings=['Bases only. Features, topology, oligos and history are not encoded.'];
+  if(doc.creation)warnings.push('The structured PCR creation record is not included. Keep .sg.json or export the creation record.');
   if(selection)warnings.push('Selected bases in reference-strand order, including any origin crossing.');
   if(format==='text')return {text:sequence+'\n',filename:name+'.txt',warnings,exportedFeatures:0};
   if(format!=='fasta')throw new Error('Unsupported export format.');

@@ -42,3 +42,12 @@ continues to omit internal history and the saved PCR library/setup, as reported.
 GenBank, EMBL, FASTA, plain-DNA and oligo exports. Modern EMBL source records are
 archived as text under schema 6. Empty working drafts must be linear and contain no
 features; they can be saved natively but not exported as a fictitious molecule.
+
+## Native schema 7 (0.8.5)
+
+PCR-derived documents retain a typed `creation` snapshot independently of later
+sequence/annotation changes. It includes source DNA, SHA-256 identifiers, exact
+inputs, selected product and feature-transfer report. Geometry and sequence are
+validated on import; hashes can be verified explicitly in History. Native formats
+1–6 retain their existing behavior. Interchange formats do not retain this record.
+See [PCR products](PCR_PRODUCTS.md) for size, privacy and validation boundaries.

@@ -116,7 +116,7 @@ with sync_playwright() as p:
         page.get_by_role('button',name='Help',exact=True).click()
         dialog=page.get_by_role('dialog',name='Gin Schnaps help',exact=True)
         expect(dialog).to_be_visible()
-        assert '0.8.4' in dialog.inner_text()
+        assert json.loads((ROOT/'package.json').read_text())['version'] in dialog.inner_text()
         dialog.locator('summary').filter(has_text='Privacy & licenses').click()
         expect(dialog.get_by_text('Own code:',exact=False)).to_be_visible()
         page.keyboard.press('Control+n')

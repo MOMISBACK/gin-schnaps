@@ -22,3 +22,5 @@ import './sequence-paste.test';
 import './message-policy.test';
 
 import './workspace-export.test';
+
+import './pcr-document.test';

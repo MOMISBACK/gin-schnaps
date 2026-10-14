@@ -1,0 +1,80 @@
+import { type AnalysisRequest, type AnalysisResponse, sameStamp } from '../core/protocol';
+import { type PcrOptions, type PcrProduct } from '../core/pcr';
+import { type Feature, type SequenceDocument, MAX_FEATURES, selectionSegments, serializeDocument, validateDocument } from './model';
+import { newDocumentId } from './document-operations';
+import { sha256, validatePcrProduct, validatePcrOptions, type FeatureTransfer, type PcrCreation } from './pcr-provenance';
+
+export type PcrDocumentOptions = { name: string; transferFeatures: boolean; annotatePrimers: boolean; id?: string };
+const POSITION_KEYS = new Set(['transl_except', 'anticodon', 'rpt_unit_range']);
+const CONTENT_KEYS = new Set(['translation', 'codon_start', 'protein_id', 'inference']);
+
+export function previewPcrDocument(source: SequenceDocument, input: PcrOptions, candidate: PcrProduct, transferFeatures: boolean, annotatePrimers: boolean) {
+  const options = validatePcrOptions(input), product = validatePcrProduct(candidate, source, options);
+  const tailLength = options.primers[product.forward.primer].tail.length;
+  const selected = selectionSegments({ start: product.start, length: product.templateLength }, source.sequence.length);
+  let offset = tailLength;
+  const projection = selected.map(s => { const part = { ...s, offset }; offset += s.end - s.start; return part; });
+  const features: Feature[] = [], report: FeatureTransfer[] = [];
+  for (const [index, feature] of source.features.entries()) {
+    const item = { sourceId: feature.id, name: feature.name };
+    if (!transferFeatures) { report.push({ ...item, status: 'excluded', targetId: null }); continue; }
+    if (feature.unresolved) { report.push({ ...item, status: 'unresolved', targetId: null }); continue; }
+    // Preserve each part's declared order, not the order of its new numeric coordinate.
+    // A wrapped product may therefore contain an exact, non-monotonic join.
+    const segments = feature.segments.flatMap(s => projection.map(p => ({ start: Math.max(s.start, p.start), end: Math.min(s.end, p.end), projection: p }))
+      .filter(p => p.end > p.start).sort((a, b) => a.start - b.start)
+      .map(p => ({ start: p.start - p.projection.start + p.projection.offset, end: p.end - p.projection.start + p.projection.offset })));
+    if (!segments.length) { report.push({ ...item, status: 'outside', targetId: null }); continue; }
+    const retained = segments.reduce((n, s) => n + s.end - s.start, 0), original = feature.segments.reduce((n, s) => n + s.end - s.start, 0);
+    const clipped = retained !== original;
+    const moved = JSON.stringify(feature.segments) !== JSON.stringify(segments);
+    const invalid = (key: string) => (moved && POSITION_KEYS.has(key)) || (clipped && (POSITION_KEYS.has(key) || CONTENT_KEYS.has(key)));
+    const archived = feature.qualifiers.filter(q => invalid(q.key));
+    const id = `pcr-parent-${index + 1}`;
+    features.push({ ...feature, id, segments,
+      qualifiers: feature.qualifiers.filter(q => !invalid(q.key)),
+      archivedQualifiers: [...feature.archivedQualifiers, ...archived.map(q => ({ ...q, reason: clipped ? 'Feature clipped in a theoretical PCR product; dependent value not recalculated.' : 'Feature projected into a PCR product; coordinate-dependent value not rewritten.' }))],
+      reviewRequired: feature.reviewRequired || clipped || archived.length > 0 });
+    report.push({ ...item, status: clipped ? 'clipped' : 'transferred', targetId: id });
+  }
+  if (annotatePrimers) {
+    for (const [direction, site] of [[1, product.forward], [-1, product.reverse]] as const) {
+      const primer = options.primers[site.primer], length = primer.tail.length + primer.annealing.length;
+      features.push({ id: direction === 1 ? 'pcr-primer-forward' : 'pcr-primer-reverse', name: primer.name, type: 'primer_bind', strand: direction,
+        color: direction === 1 ? '#4B7FB5' : '#9567AD', segments: [{ start: direction === 1 ? 0 : product.sequence.length - length, end: direction === 1 ? length : product.sequence.length }],
+        qualifiers: [{ key: 'note', value: `Full primer-derived sequence in a theoretical product: ${primer.tail.length} nt 5-prime tail + ${primer.annealing.length} nt annealing region on the source template. Not an experimentally verified binding site.` }], archivedQualifiers: [], reviewRequired: true });
+    }
+  }
+  if (features.length > MAX_FEATURES) throw new Error(`The product exceeds ${MAX_FEATURES} features. Disable primer annotations or parental feature transfer.`);
+  return { features, report, clipped: report.filter(f => f.status === 'clipped').length,
+    unresolved: report.filter(f => f.status === 'unresolved').length, outside: report.filter(f => f.status === 'outside').length,
+    transferred: report.filter(f => f.targetId !== null).length, product, options };
+}
+
+/** Derive exactly one selected worker result. Stale-source guards also run in the UI before insertion. */
+export async function createPcrDocument(sourceInput: SequenceDocument, revision: number, request: AnalysisRequest, response: AnalysisResponse, productIndex: number, settings: PcrDocumentOptions): Promise<SequenceDocument> {
+  if (!response.ok || response.result.kind !== 'pcr' || request.task.kind !== 'pcr' || !sameStamp(request, response) || request.revision !== revision || request.molecule.sequence !== sourceInput.sequence || request.molecule.topology !== sourceInput.topology) throw new Error('PCR result does not match the source revision. Run the analysis again.');
+  if (!Number.isInteger(productIndex) || productIndex < 0 || productIndex >= response.result.products.length) throw new Error('Select an existing PCR product.');
+  const sourceText = serializeDocument(sourceInput);
+  const source = validateDocument(JSON.parse(sourceText)); // Snapshot before any asynchronous work.
+  const preview = previewPcrDocument(source, request.task.options, response.result.products[productIndex], settings.transferFeatures, settings.annotatePrimers);
+  const [documentSha256, sequenceSha256, productSha256] = await Promise.all([sha256(sourceText), sha256(source.sequence), sha256(preview.product.sequence)]);
+  const creation: PcrCreation = {
+    version: 1, kind: 'exact-pcr', engineVersion: response.engineVersion,
+    source: { id: source.id, name: source.name, revision, sequence: source.sequence, topology: source.topology, documentSha256, sequenceSha256 },
+    options: preview.options, product: preview.product, productIndex, productCount: response.result.products.length, productSha256,
+    featurePolicy: settings.transferFeatures ? 'exact' : 'none', primerFeatures: settings.annotatePrimers, featureReport: preview.report
+  };
+  const used = Array.from(new Set([preview.product.forward.primer, preview.product.reverse.primer]));
+  const warnings = ['Theoretical exact-match product; no experimental outcome, end chemistry or biological function is certified.',
+    `${preview.transferred} parental features transferred (${preview.clipped} clipped); ${preview.outside} outside the amplicon; ${preview.unresolved} unresolved features omitted.`,
+    'Only the used full oligos are copied. Source file archives, parental history and the source PCR recipe are not attached to the new template. Creation inputs are retained separately.'];
+  const doc = validateDocument({ schemaVersion: 7, id: settings.id ?? newDocumentId(), name: settings.name, description: `Theoretical PCR product ${productIndex + 1}/${response.result.products.length} from ${source.name}. Tails included; reference orientation. See the creation record for inputs and feature transfer.`,
+    sequence: preview.product.sequence, topology: 'linear', features: preview.features, provenance: 'local-file', sourceArchive: null,
+    history: [{ action: 'create-pcr-product', summary: `Created theoretical product ${productIndex + 1}/${response.result.products.length} from ${source.name} (${preview.product.sequence.length} bp).`, warnings }], historyOmitted: 0,
+    primers: used.map(i => ({ id: `pcr-oligo-${i}`, name: preview.options.primers[i].name, sequence: preview.options.primers[i].tail + preview.options.primers[i].annealing,
+      notes: 'Full reagent used in the recorded source PCR. Hybridization on this new template is not inferred.', provenance: 'manual' })), pcrRecipe: null, creation });
+  const serialized = serializeDocument(doc); // Size and reimportability gate before workspace insertion.
+  if (new TextEncoder().encode(serialized).length > 4_000_000) throw new Error('PCR document exceeds the 4 MB desktop-saving limit. Disable parental feature transfer; the source remains unchanged.');
+  return doc;
+}

@@ -143,8 +143,8 @@ pub fn check_document(bytes: &[u8]) -> Result<()> {
     if bytes.len() > DOCUMENT_LIMIT { return Err("Native documents are limited to 4 MB".into()); }
     let v: Value = serde_json::from_slice(bytes).map_err(|_| "Invalid document JSON")?;
     let seq = v["sequence"].as_str().ok_or("DNA sequence missing")?;
-    if !matches!(v["schemaVersion"].as_u64(),Some(5 | 6)) || seq.len() > 100_000
-        || (seq.is_empty() && (v["schemaVersion"].as_u64()!=Some(6) || v["topology"]!="linear" || v["features"].as_array().is_none_or(|f| !f.is_empty())))
+    if !matches!(v["schemaVersion"].as_u64(),Some(5 | 6 | 7)) || seq.len() > 100_000
+        || (seq.is_empty() && (!matches!(v["schemaVersion"].as_u64(),Some(6 | 7)) || v["topology"]!="linear" || v["features"].as_array().is_none_or(|f| !f.is_empty())))
         || !seq.bytes().all(|b| b"ACGTRYSWKMBDHVN".contains(&b))
         || !matches!(v["topology"].as_str(), Some("linear" | "circular"))
         || v["features"].as_array().is_none_or(|f| f.len() > 1000)
@@ -251,6 +251,16 @@ mod tests {
     use super::*;
     fn dir() -> PathBuf { let p=std::env::temp_dir().join(format!("gin-schnaps-unit-{}",Uuid::new_v4()));fs::create_dir(&p).unwrap();p }
     fn doc(s:&str)->String{json!({"schemaVersion":5,"name":"Test","sequence":s,"topology":"linear","features":[],"primers":[]}).to_string()}
+    #[test] fn schema_seven_envelope_roundtrips_without_native_scientific_claims() {
+        let d=dir();let mut store=FileStore::new(d.join("app")).unwrap();let p=d.join("pcr.sg.json");
+        let mut value:Value=serde_json::from_str(&doc("ACGT")).unwrap();value["schemaVersion"]=json!(7);
+        value["creation"]=json!({"notice":"Scientific creation validation belongs to the TypeScript model."});
+        let encoded=value.to_string();let saved=store.save_to(&p,&encoded,None,None).unwrap();
+        assert_eq!(read_bounded(&p,DOCUMENT_LIMIT).unwrap(),encoded.as_bytes());
+        value["sequence"]=json!("");assert!(store.save(saved["token"].as_str().unwrap(),&value.to_string()).is_ok());
+        value["schemaVersion"]=json!(8);assert!(store.save(saved["token"].as_str().unwrap(),&value.to_string()).is_err());
+        fs::remove_dir_all(d).unwrap();
+    }
     #[test] fn write_read_and_backup_are_exact() {
         let d=dir();let mut store=FileStore::new(d.join("app")).unwrap();let p=d.join("test.sg.json");
         let a=doc("ACGT");let b=doc("ACGTA");

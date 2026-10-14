@@ -99,3 +99,10 @@ exposed. Browser API references: [clipboard events](https://developer.mozilla.or
 and [React synchronous browser integration](https://react.dev/reference/react-dom/flushSync).
 The latter is used only to focus the paste textarea before the browser's default
 keyboard paste; it is not used for regular sequence rendering or calculation.
+
+PCR document checks: `npm run test:pcr-documents`. CI opens the real local HTML
+with browser WebCrypto, independently reads the exported GenBank using Biopython,
+and runs the native creation/save/reopen path on four targets. The local sandbox's
+explicit inline test mode substitutes a Python hashlib digest adapter because
+navigation and WebCrypto secure contexts are unavailable there. Such local reports
+must not be represented as file-launch, persistence or native WebCrypto validation.

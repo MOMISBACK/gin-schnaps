@@ -1,5 +1,18 @@
 # Changelog
 
+## 0.8.5 — PCR products as documents (preview)
+
+- Create one explicitly selected theoretical PCR product as an unsaved linear document.
+- Preview exact/partial parental feature projection; preserve joined-part order and
+  strand, archive stale qualifiers, and require consent for unresolved omissions.
+- Copy used full oligos; optionally annotate primer-derived regions including tails.
+- Native schema 7 retains creation-time inputs, source snapshot/hashes and transfer
+  report. History distinguishes the original calculation from subsequent edits.
+- Guard stale results, cancelled asynchronous work, capacity, and native saving size.
+- Browser and native regressions exercise creation, real digest, save/reopen and
+  provenance. The scientific PCR algorithm is unchanged. See [guide](docs/PCR_PRODUCTS.md).
+
+
 ## 0.8.4 — paired workspace and expert interface (preview)
 
 - Add resizable Sequence/Map paired view with one shared selection and a subtle

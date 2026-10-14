@@ -13,7 +13,7 @@ Source on `main` may be newer than the public preview. Download only an asset fr
 
 **[Download published Gin Schnaps previews](https://github.com/MOMISBACK/gin-schnaps/releases)**
 
-The table below describes the package types. Select the version actually listed on the releases page; source changes are not available until their release is published. The 0.8.3 clipboard and file-safety changes are documented in [CHANGELOG](CHANGELOG.md).
+The table below describes the package types. Select the version actually listed on the releases page; source changes are not available until their release is published. The current changes are documented in [CHANGELOG](CHANGELOG.md).
 
 Choose a file from **Assets** on that release page. In the table, `VERSION` means
 the number printed on the release you selected (not text to type into a URL):
@@ -44,9 +44,10 @@ native compatibility with every older macOS version has not been established.
 - FASTA/plain DNA, documented GenBank/EMBL subsets, partial `.dna` import, and `.sg.json` documents.
 - Six-frame/CDS translation with codes 1 and 11, 16 restriction enzymes,
   exact theoretical PCR, saved oligo libraries and one saved PCR setup per document.
+- Create a document from a selected PCR product, with feature-transfer preview and saved provenance.
 - Native Open/Save/Save As on desktop; opt-in local recovery. No account or sequence upload.
 
-[File compatibility](docs/FILE_FORMATS.md) · [Scientific scope](docs/SCIENCE.md)
+[File compatibility](docs/FILE_FORMATS.md) · [Scientific scope](docs/SCIENCE.md) · [PCR product documents](docs/PCR_PRODUCTS.md)
 
 ## Important limits
 

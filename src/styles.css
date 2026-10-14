@@ -78,3 +78,5 @@
 .help-dialog{max-width:600px}
 .help-dialog .context-help{margin:12px 0}
 .edit-preview>h3{margin-bottom:6px}
+
+.pcr-creation-record{background:#fff;border:1px solid var(--divider);border-radius:4px;padding:12px;margin:16px 0;max-width:850px}.pcr-creation-record h3{font-size:13px;margin-bottom:6px}.pcr-creation-record p{margin:6px 0}.pcr-creation-record details{margin-top:8px}.pcr-creation-record summary{cursor:pointer}.pcr-transfer-report{max-height:200px;overflow:auto;overflow-wrap:anywhere}.hash-value{overflow-wrap:anywhere;font-size:11px}
