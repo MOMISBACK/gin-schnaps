@@ -1,0 +1,57 @@
+name: Verify editor source transfer
+on:
+  push:
+    branches: [feat/0.8.7-map-editing]
+    paths: ['.editor-transfer/**', '.github/workflows/prepare-editor.yml']
+permissions:
+  contents: read
+jobs:
+  verify:
+    if: contains(github.event.head_commit.message, 'transfer editor')
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: '22'
+      - name: Materialize the exact locally tested source tree
+        run: |
+          cat .editor-transfer/part{0,1,2,3}.xz > /tmp/editor.patch.xz
+          echo '34ab0fdbfd4f93fb308afdc564e612faf9d5b7052eed28fcc0839a0cbd05bfea  /tmp/editor.patch.xz' | sha256sum -c -
+          python3 -c "import lzma,pathlib; pathlib.Path('/tmp/editor.patch').write_bytes(lzma.decompress(pathlib.Path('/tmp/editor.patch.xz').read_bytes()))"
+          git apply --index --unidiff-zero /tmp/editor.patch
+          git rm -r .editor-transfer .github/workflows/prepare-editor.yml
+          test "$(git write-tree)" = 'c503387392c8741ac50936f04767bfa021aad033'
+      - name: Install locked dependencies and run checks
+        run: |
+          npm ci --ignore-scripts --no-fund --no-audit
+          npm run check
+  record:
+    needs: verify
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          ref: feat/0.8.7-map-editing
+      - name: Record only the verified source without executing it
+        env:
+          EXPECTED_HEAD: ${{ github.sha }}
+        run: |
+          test "$(git rev-parse HEAD)" = "$EXPECTED_HEAD"
+          cat .editor-transfer/part{0,1,2,3}.xz > /tmp/editor.patch.xz
+          echo '34ab0fdbfd4f93fb308afdc564e612faf9d5b7052eed28fcc0839a0cbd05bfea  /tmp/editor.patch.xz' | sha256sum -c -
+          python3 -c "import lzma,pathlib; pathlib.Path('/tmp/editor.patch').write_bytes(lzma.decompress(pathlib.Path('/tmp/editor.patch.xz').read_bytes()))"
+          git apply --index --unidiff-zero /tmp/editor.patch
+          git rm -r .editor-transfer .github/workflows/prepare-editor.yml
+          test "$(git write-tree)" = 'c503387392c8741ac50936f04767bfa021aad033'
+          git restore --source=HEAD --staged --worktree .github/workflows/prepare-editor.yml
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git commit -m 'feat: add mouse map camera and guarded exact-part nucleotide editing'
+          git push origin HEAD:feat/0.8.7-map-editing
