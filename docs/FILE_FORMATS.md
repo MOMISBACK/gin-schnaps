@@ -10,7 +10,7 @@ that all source semantics are supported.
 | FASTA | DNA sequence/name, explicit normalization; multi-record | No topology/annotations inferred; linear default reported |
 | Native v1/v2/v3 | Migration to v5; prior supported fields preserved | Empty library/no PCR recipe added, no invented past primers |
 | Native v4/v5 | Full scientific document, oligos/recipe, descriptors, source/archive/history | Session undo stacks and computed results are not serialized |
-| GenBank exact locations | Simple, complement, homogeneous nonoverlapping joins, declared part order | Max 128 parts; DNA splicing of disjoint features blocked |
+| GenBank exact locations | Simple, complement, homogeneous nonoverlapping joins, declared part order | Max 128 parts; exact-part splicing preserves declared order and excludes inserted gap/boundary bases |
 | GenBank unresolved descriptors | `<`, `>`, remote accession.version, between-base, order, mixed/overlapping join; preserve and export | No fabricated projection, translation or sequence transformation |
 | Other GenBank constructs | Explicit refusal | No one-of/within-range/general INSDC completeness; explicit DNA/topology LOCUS required |
 | .dna DNA/features | Uncompressed dsDNA; topology; exact standard segments, strands, qualifiers; joined parts | No gap segments, bidirectional features, RNA/uracil, compressed/protein/ssDNA |

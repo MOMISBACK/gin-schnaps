@@ -26,3 +26,5 @@ import './workspace-export.test';
 import './pcr-document.test';
 
 import './document-backup.test';
+
+import './interactive-editing.test';

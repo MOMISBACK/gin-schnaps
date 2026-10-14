@@ -1,3 +1,4 @@
+import { projectCompoundSplice } from './compound-splice';
 import { appendHistory } from './history';
 import { serializeDocument } from './model';
 import { primerCommand, type PrimerCommand } from './primer-commands';
@@ -91,7 +92,7 @@ export function executeCommand(doc: SequenceDocument, command: Command): Command
       throw new Error("Linearization refused: a feature crosses the origin. Edit its definition first.");
     return finish(doc, { ...doc, topology: command.topology }, 'topology', `Declared topology: ${command.topology === 'circular' ? "circular" : "linear"}.`, ["The document topology, not just its presentation, was changed."], null);
   }
-  if(doc.features.some(f=>!featureSelection(f,doc)))throw new Error('DNA splicing is blocked while disjoint or unresolved features are present. Their exact edit semantics are not implemented; resolve or explicitly remove those features first.');
+  if (doc.features.some(f => f.unresolved)) throw new Error('DNA splicing is blocked while unresolved locations are present. Resolve or explicitly remove these descriptors first; no coordinates are invented.');
   const { start, deleteCount, insert } = command, n = doc.sequence.length;
   if (!Number.isInteger(start) || start < 0 || start > n || !Number.isInteger(deleteCount) || deleteCount < 0 || deleteCount > n || (start === n && deleteCount > 0))
     throw new Error("Operation outside the sequence bounds.");
@@ -109,9 +110,23 @@ export function executeCommand(doc: SequenceDocument, command: Command): Command
   const sequence = wrapping ? doc.sequence.slice(end, start) + insert : doc.sequence.slice(0, start) + insert + doc.sequence.slice(end);
   // An identical substitution changes neither the scientific document nor its provenance.
   if (!wrapping && sequence === doc.sequence) return { doc, selection: insert.length ? { start: insertionPosition, length: insert.length } : null, changed: 0, removed: 0, warnings: [] };
-  let changed = 0, removed = 0, archived = 0;
+  let changed = 0, removed = 0, archived = 0, removedParts = 0;
   const features: Feature[] = [];
   for (const feature of doc.features) {
+    if (!featureSelection(feature, doc)) {
+      const projection = projectCompoundSplice(feature.segments, mappings, start, deleteCount, insert.length, insertionPosition, removedSpans);
+      removedParts += projection.removedParts;
+      if (!projection.segments.length) { removed++; continue; }
+      const positionsChanged = !same(projection.segments, feature.segments);
+      let next: Feature = { ...feature, segments: projection.segments };
+      if (projection.contentChanged || positionsChanged || newN !== n) {
+        next = invalidate(next, projection.contentChanged, positionsChanged || newN !== n);
+        archived += next.archivedQualifiers.length - feature.archivedQualifiers.length;
+      }
+      if (projection.contentChanged || positionsChanged) changed++;
+      features.push(next);
+      continue;
+    }
     const fstart = feature.segments[0].start;
     const flength = feature.segments.reduce((sum, s) => sum + s.end - s.start, 0);
     const distance = doc.topology === 'circular' ? ((start % n) - fstart + n) % n : start - fstart;
@@ -146,9 +161,11 @@ export function executeCommand(doc: SequenceDocument, command: Command): Command
   const warnings: string[] = [];
   if (wrapping && deleteCount < n) warnings.push(`The deleted origin is replaced by old base ${end + 1}, the first retained base. Inserted DNA is placed at the sequence end before this new origin.`);
   if (deleteCount === n) warnings.push("The entire previous sequence is deleted. The new origin is the first inserted base.");
+  if (removedParts) warnings.push(`${removedParts} joined feature part(s) fully deleted; remaining parts keep their declared order.`);
   if (removed) warnings.push(`${removed} feature(s) fully deleted; recoverable with Undo during this session.`);
   if (changed) warnings.push(`${changed} feature(s) adjusted: check their biological interpretation.`);
   if (archived) warnings.push(`${archived} potentially obsolete qualifier(s) archived, without recalculating translation.`);
+  if (insert.length && doc.features.some(f => !featureSelection(f, doc))) warnings.push('For joined features, inserted bases inherit a part only when the entire replacement is strictly inside that one part. Part boundaries and intervening gaps are not filled.');
   if (insert.length && deleteCount) warnings.push("Replacement DNA inherits a feature only if the replacement lies strictly inside it.");
   return finish(doc, { ...doc, sequence, features }, 'splice', `${deleteCount} base(s) deleted, ${insert.length} inserted, starting at position ${start + 1}.`, warnings,
     insert.length ? { start: insertionPosition, length: insert.length } : null, changed, removed);

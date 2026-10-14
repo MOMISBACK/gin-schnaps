@@ -41,15 +41,15 @@ on ambiguous IUPAC bases is not the same as a certain match. **Copy RC** copies 
 reverse complement without changing the molecule.
 
 Sequence insertion, replacement and deletion use controlled dialogs with an
-impact preview; free typing in nucleotide rows is not implemented. Review affected
+impact preview; enable Type DNA for guarded direct nucleotide input. Review affected
 features before applying an edit. Undo/redo are per document and session-only.
 Translations or coordinate-dependent claims made stale by editing are archived and
 marked for review, not silently presented as valid recalculations.
 
 **Properties**, **Duplicate**, **Extract…**, **Reverse complement…** and **Set origin…**
 provide common document operations. Extracting a partial feature reports truncation.
-A disjoint `join(...)` retains its actual parts, not the gaps between them. Unsupported
-splices on such annotations are refused. Unresolved locations are retained as
+A disjoint `join(...)` retains its actual parts, not the gaps between them. Exact
+part splices use the conservative rules in [Editing](EDITING.md). Unresolved locations are retained as
 metadata without invented exact coordinates; they restrict sequence transformations.
 
 The Sequence view has proportional feature tracks and optional frame translation.
@@ -143,12 +143,13 @@ Existing destination annotations use the same adjustment/review rules as Edit.
 Plain DNA and one FASTA record are accepted. Whitespace and lowercase are normalized
 with a notice. Multiple FASTA records, digits, gaps, non-DNA characters and excess
 length are rejected, never silently stripped or truncated. The limit remains
-100,000 bases in the result. Pasting into documents with disjoint or unresolved
-features remains blocked when the shared edit engine cannot safely update them.
+100,000 bases in the result. Exact disjoint parts are projected independently;
+unresolved locations remain protected against ordinary base edits.
 An explicit **Reverse-complement pasted DNA** option changes the pasted bases only.
 
-Normal text fields keep their ordinary Copy/Paste behavior. Direct free typing
-into the displayed nucleotide rows and cross-document Cut are not implemented.
+Normal text fields keep their ordinary Copy/Paste behavior. Enable Type DNA for
+guarded nucleotide input. Cut copies bases before deleting them; Paste remains
+base-only and does not transfer source annotations.
 
 ## Compact interface
 
@@ -171,3 +172,9 @@ The backup includes PCR drafts separately from saved setups; the ordinary Native
 export and automatic recovery still require **Save PCR setup** to retain them.
 Check download receipt, keep the file private, and save restored documents explicitly.
 See [portable backups](DOCUMENT_BACKUPS.md) for bounds and exclusions.
+
+## Direct DNA editing and mouse navigation
+
+See [editing and map controls](EDITING.md) for Type DNA, joined-part rules,
+wheel zoom, middle/Space/hand-tool pan and Fit. These preserve the existing
+file-save, draft, recovery and undo safety boundaries.

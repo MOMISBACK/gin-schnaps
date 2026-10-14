@@ -26,7 +26,7 @@ export function serializeMap(svg: SVGSVGElement, doc: SequenceDocument): string 
   }
   const rect = svg.getBoundingClientRect();
   if (!rect.width || !rect.height) throw new Error('The map has not finished rendering.');
-  clone.setAttribute('xmlns',NS); clone.setAttribute('width', String(Math.round(rect.width))); clone.setAttribute('height', String(Math.round(rect.height)));
+  clone.setAttribute('xmlns',NS); clone.setAttribute('width', String(Math.round(svg.clientWidth || rect.width))); clone.setAttribute('height', String(Math.round(svg.clientHeight || rect.height)));
   clone.style.background = '#ffffff';
   const title = document.createElementNS(NS,'title'); title.textContent = `${doc.name} — ${doc.sequence.length} bp, ${doc.topology}. Graphical view only; use the native format for sequence data.`;
   clone.insertBefore(title, clone.firstChild);
@@ -41,7 +41,7 @@ export async function exportMap(svg: SVGSVGElement, doc: SequenceDocument, forma
     await new Promise<void>((resolve,reject) => { image.onload=()=>resolve(); image.onerror=()=>reject(new Error('Unable to rasterize the SVG map. Export SVG instead.')); image.src=url; });
     const factor = 2;
     const width = Math.ceil(image.naturalWidth * factor), height = Math.ceil(image.naturalHeight * factor);
-    if (!width || !height || width * height > 32_000_000) throw new Error('PNG is too large. Reduce map zoom or export SVG.');
+    if (!width || !height || width * height > 32_000_000) throw new Error('PNG is too large. Reduce map dimensions or export SVG.');
     const canvas = document.createElement('canvas'); canvas.width=width; canvas.height=height;
     const ctx=canvas.getContext('2d'); if(!ctx) throw new Error('Canvas is unavailable. Export SVG instead.');
     ctx.fillStyle='#ffffff';ctx.fillRect(0,0,width,height);ctx.drawImage(image,0,0,width,height);

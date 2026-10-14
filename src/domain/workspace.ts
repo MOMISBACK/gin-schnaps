@@ -1,7 +1,8 @@
 import { type SequenceDocument, type Selection, MAX_OPEN_DOCUMENTS } from './model';
 export type View = 'map' | 'sequence' | 'split' | 'enzymes' | 'features' | 'primers' | 'history' | 'translation';
-export type Snapshot = { doc: SequenceDocument; selection: Selection };
+export type Snapshot = { doc: SequenceDocument; selection: Selection; editCaret?: number };
 export type OpenDocument = {
+  typing?: boolean; editCaret?: number;
   key: number; revision: number; doc: SequenceDocument; view: View; selection: Selection;
   presentation: 'circular' | 'linear'; hiddenFeatures: string[]; scrollTop: number;
   source: string; past: Snapshot[]; future: Snapshot[]; exportedDoc: SequenceDocument | null;
@@ -13,12 +14,14 @@ export type WorkspaceAction =
   | { type: 'open'; documents: SequenceDocument[]; source: string; dirty?: boolean }
   | { type: 'activate'; key: number }
   | { type: 'close'; key: number }
+  | { type: 'typing'; enabled: boolean }
+  | { type: 'caret'; position: number }
   | { type: 'view'; view: View }
   | { type: 'select'; selection: Selection }
   | { type: 'presentation'; presentation: 'circular' | 'linear' }
   | { type: 'visibility'; id: string }
   | { type: 'scroll'; scrollTop: number }
-  | { type: 'commit'; key: number; doc: SequenceDocument; selection: Selection }
+  | { type: 'commit'; key: number; doc: SequenceDocument; selection: Selection; editCaret?: number }
   | { type: 'checkpoint'; key: number; doc: SequenceDocument }
   | { type: 'undo' | 'redo' };
 export const emptyWorkspace: Workspace = { documents: [], active: null, nextKey: 1 };
@@ -36,7 +39,7 @@ export function workspaceReducer(state: Workspace, action: WorkspaceAction): Wor
   if (action.type === 'open') {
     if (state.documents.length + action.documents.length > MAX_OPEN_DOCUMENTS) throw new Error(`Maximum ${MAX_OPEN_DOCUMENTS} open documents.`);
     const opened = action.documents.map((doc, i): OpenDocument => ({
-      key: state.nextKey + i, revision: 0, doc, source: action.source, view: 'map', selection: null,
+      key: state.nextKey + i, revision: 0, doc, source: action.source, view: 'map', selection: null, typing: false, editCaret: 0,
       presentation: doc.topology, hiddenFeatures: [], scrollTop: 0, past: [], future: [], exportedDoc: action.dirty ? null : doc
     }));
     return { documents: [...state.documents, ...opened], active: opened[0]?.key ?? state.active, nextKey: state.nextKey + opened.length };
@@ -52,24 +55,26 @@ export function workspaceReducer(state: Workspace, action: WorkspaceAction): Wor
     if (entry.key !== target) return entry;
     switch (action.type) {
       case 'commit': {
-        if (entry.doc === action.doc) return { ...entry, selection: action.selection };
-        return { ...entry, revision: entry.revision + 1, doc: action.doc, selection: action.selection, scrollTop: 0,
+        if (entry.doc === action.doc) return { ...entry, selection: action.selection, editCaret: action.editCaret ?? entry.editCaret };
+        return { ...entry, revision: entry.revision + 1, doc: action.doc, selection: action.selection, editCaret: action.editCaret ?? Math.min(entry.editCaret ?? 0, action.doc.sequence.length), scrollTop: 0,
           presentation: action.doc.topology === 'linear' ? 'linear' : entry.presentation,
-          past: boundSnapshots([...entry.past, { doc: entry.doc, selection: entry.selection }]), future: [] };
+          past: boundSnapshots([...entry.past, { doc: entry.doc, selection: entry.selection, editCaret: entry.editCaret }]), future: [] };
       }
       case 'checkpoint': return { ...entry, exportedDoc: action.doc };
       case 'undo': {
         const previous = entry.past[entry.past.length - 1];
         return previous ? { ...entry, ...previous, revision: entry.revision + 1, scrollTop: 0,
           presentation: previous.doc.topology === 'linear' ? 'linear' : entry.presentation,
-          past: entry.past.slice(0, -1), future: [...entry.future, { doc: entry.doc, selection: entry.selection }] } : entry;
+          past: entry.past.slice(0, -1), future: [...entry.future, { doc: entry.doc, selection: entry.selection, editCaret: entry.editCaret }] } : entry;
       }
       case 'redo': {
         const next = entry.future[entry.future.length - 1];
         return next ? { ...entry, ...next, revision: entry.revision + 1, scrollTop: 0,
           presentation: next.doc.topology === 'linear' ? 'linear' : entry.presentation,
-          past: boundSnapshots([...entry.past, { doc: entry.doc, selection: entry.selection }]), future: entry.future.slice(0, -1) } : entry;
+          past: boundSnapshots([...entry.past, { doc: entry.doc, selection: entry.selection, editCaret: entry.editCaret }]), future: entry.future.slice(0, -1) } : entry;
       }
+      case 'typing': return { ...entry, typing: action.enabled, editCaret: entry.selection?.start ?? Math.min(entry.editCaret ?? 0, entry.doc.sequence.length) };
+      case 'caret': return Number.isInteger(action.position) && action.position >= 0 && action.position <= entry.doc.sequence.length ? { ...entry, editCaret: action.position } : entry;
       case 'view': return { ...entry, view: action.view };
       case 'select': return { ...entry, selection: action.selection };
       case 'presentation': return { ...entry, presentation: action.presentation };
