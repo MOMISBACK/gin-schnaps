@@ -28,3 +28,5 @@ import './pcr-document.test';
 import './document-backup.test';
 
 import './interactive-editing.test';
+
+import './annotations-fragment.test';

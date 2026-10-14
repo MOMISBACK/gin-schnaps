@@ -178,3 +178,8 @@ See [portable backups](DOCUMENT_BACKUPS.md) for bounds and exclusions.
 See [editing and map controls](EDITING.md) for Type DNA, joined-part rules,
 wheel zoom, middle/Space/hand-tool pan and Fit. These preserve the existing
 file-save, draft, recovery and undo safety boundaries.
+
+## Annotation workflows
+
+See [Annotations and annotated clipboard](ANNOTATIONS.md) for object selection,
+segment/CDS editing, Copy DNA + features, Features-only paste and explicit loss reports.

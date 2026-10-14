@@ -1,6 +1,6 @@
 {
   "name": "gin-schnaps",
-  "version": "0.8.7",
+  "version": "0.8.8",
   "private": true,
   "type": "module",
   "license": "GPL-3.0-or-later",
@@ -27,7 +27,8 @@
     "test:expert-ui": "python3 tests/expert-interface.py",
     "test:pcr-documents": "python3 tests/pcr-documents.py",
     "test:backups": "python3 tests/document-backup.py",
-    "test:interactive-editing": "python3 tests/interactive-editing.py"
+    "test:interactive-editing": "python3 tests/interactive-editing.py",
+    "test:annotations": "python3 tests/annotations-clipboard.py"
   },
   "engines": {
     "node": ">=20"

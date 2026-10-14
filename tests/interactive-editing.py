@@ -81,9 +81,10 @@ with sync_playwright() as p:
         assert 'pan-ready' not in nav.get_attribute('class')
         done('Pointer cancellation and window blur release the pan gesture instead of leaving it stuck')
         button('Fit').click();nav.focus();page.keyboard.press('+');page.keyboard.press('ArrowRight');assert camera()['x']!=0
-        page.set_viewport_size({'width':1024,'height':640});expect(nav).to_have_attribute('data-zoom','1')
+        zoom_before_resize=nav.get_attribute('data-zoom')
+        page.set_viewport_size({'width':1024,'height':640});expect(nav).to_have_attribute('data-zoom',zoom_before_resize)
         assert page.evaluate('document.documentElement.scrollWidth<=innerWidth');page.screenshot(path=str(OUT/'map-navigation-1024.png'))
-        done('Map controls remain usable in a compact window; resizing recenters safely')
+        done('Map controls remain usable in a compact window; resizing preserves user zoom until explicit Fit')
         # A joined, unstranded feature to exercise core editing without fake CDS claims.
         d={**before,'id':'typed-synthetic','name':'Typed joined document','sequence':'ACGT'*8,'topology':'linear','history':[],'historyOmitted':0,'sourceArchive':None,'primers':[],'pcrRecipe':None}
         d['features']=[{**before['features'][0],'id':'joined','name':'Exact joined region','type':'misc_feature','strand':0,'segments':[{'start':2,'end':8},{'start':12,'end':20}],'qualifiers':[],'archivedQualifiers':[],'reviewRequired':False}]

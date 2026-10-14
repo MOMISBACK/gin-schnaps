@@ -62,11 +62,13 @@ test('origin-spanning extraction retains correct order, clips evidence and leave
  assert.equal(r.doc.sequence,doc.sequence.slice(4700)+doc.sequence.slice(0,100));assert.equal(r.doc.topology,'linear');assert.equal(r.doc.features[0].segments[0].start,0);assert.equal(r.doc.features[0].segments[0].end,200);
  assert.equal(r.doc.features[0].reviewRequired,true);assert.ok(r.doc.features[0].archivedQualifiers.some(q=>q.key==='translation'));assert.deepEqual(r.doc.features[0].qualifiers,[{key:'note',value:'Keep exactly'}]);assert.ok(doc.features[0].qualifiers.some(q=>q.key==='translation'));
 });
-test('extraction rejects unsupported discontinuous features rather than silently losing them',()=>{
- assert.throws(()=>deriveDocument(demo,{name:'split',region:{start:100,length:4600},includeFeatures:true}),/discontinuous/);
+test('extraction now preserves exact discontinuous features without flattening their biological order',()=>{
+ const split=deriveDocument(demo,{name:'split',region:{start:100,length:4600},includeFeatures:true}).doc;
+ assert.ok(split.features[0].segments.length > 1); assert.equal(split.features[0].reviewRequired,true);
  const r=deriveDocument(demo,{name:'plain',region:{start:100,length:4600},includeFeatures:false,id:'plain'});assert.equal(r.doc.features.length,0);assert.match(r.warnings[0],/omitted/);
  const full=validateDocument({...demo,features:[{...demo.features[0],segments:selectionSegments({start:30,length:4800},4800)}]});
- assert.throws(()=>deriveDocument(full,{name:'full',region:{start:0,length:4800},includeFeatures:true}),/biological start/);
+ const fullExtract=deriveDocument(full,{name:'full',region:{start:0,length:4800},includeFeatures:true}).doc;
+ assert.equal(biological(fullExtract,fullExtract.features[0]),biological(full,full.features[0]));
 });
 test('fully-contained extracted reverse feature preserves biological DNA and translation claims',()=>{
  const f={...demo.features[4],qualifiers:[{key:'translation',value:'EVIDENCE'}]};const doc=validateDocument({...demo,features:[f]});

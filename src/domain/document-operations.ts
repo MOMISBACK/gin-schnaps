@@ -1,3 +1,5 @@
+import { mappedFeature } from './feature-policy';
+import { projectFeatures } from './feature-projection';
 import { appendHistory } from './history';
 import { serializeDocument } from './model';
 import { type Feature, type Selection, type SequenceDocument, featureSelection, selectionSegments, selectedSequence, validateDocument, MAX_BASES } from './model';
@@ -8,18 +10,6 @@ export type DocumentCommand =
   | { kind: 'reverse-complement'; selection: Selection }
   | { kind: 'rotate-origin'; origin: number; selection: Selection };
 export type DocumentChange = { doc: SequenceDocument; selection: Selection; summary: string; warnings: string[]; changed: number };
-const POSITION_KEYS = new Set(['transl_except', 'anticodon', 'rpt_unit_range']);
-const CONTENT_KEYS = new Set(['translation', 'codon_start', 'protein_id', 'inference']);
-/** Keep the evidence, not an apparently current assertion with obsolete coordinates. */
-function mappedFeature(feature: Feature, segments: Feature['segments'], strand: Feature['strand'], clipped = false): Feature {
-  const positional = JSON.stringify(segments) !== JSON.stringify(feature.segments) || strand !== feature.strand;
-  const invalid = (key: string) => (positional && POSITION_KEYS.has(key)) || (clipped && (POSITION_KEYS.has(key) || CONTENT_KEYS.has(key)));
-  const archive = feature.qualifiers.filter(q => invalid(q.key));
-  return { ...feature, segments, strand, reviewRequired: feature.reviewRequired || clipped || archive.length > 0,
-    qualifiers: feature.qualifiers.filter(q => !invalid(q.key)),
-    archivedQualifiers: [...feature.archivedQualifiers, ...archive.map(q => ({ ...q,
-      reason: clipped ? 'Feature clipped during extraction; dependent value not recalculated.' : 'Document coordinates transformed; coordinate-dependent qualifier not rewritten.' }))] };
-}
 export function transformDocument(doc: SequenceDocument, command: DocumentCommand): DocumentChange {
   const size = doc.sequence.length;
   if (command.kind === 'metadata') {
@@ -79,32 +69,10 @@ export function deriveDocument(doc: SequenceDocument, options: DeriveOptions): {
     serializeDocument(result);
     return { doc: result, warnings: retained.notices };
   }
-  if (options.includeFeatures && doc.features.some(f=>!featureSelection(f,doc))) throw new Error('Extracting disjoint or unresolved features is not implemented. Disable feature transfer explicitly, or duplicate the complete document.');
-  const selected = selectionSegments(region, size);
-  if (doc.topology === 'linear' && selected.length > 1) throw new Error('A linear extraction cannot cross the origin.');
-  const features: Feature[] = [];
-  let clippedCount = 0, omitted = 0;
-  for (const feature of doc.features) {
-    if (!options.includeFeatures) { omitted++; continue; }
-    const parts: Feature['segments'] = [];
-    let offset = 0;
-    for (const selectedPart of selected) {
-      for (const s of feature.segments) {
-        const start = Math.max(s.start, selectedPart.start), end = Math.min(s.end, selectedPart.end);
-        if (start < end) parts.push({ start: start - selectedPart.start + offset, end: end - selectedPart.start + offset });
-      }
-      offset += selectedPart.end - selectedPart.start;
-    }
-    if (!parts.length) { omitted++; continue; }
-    parts.sort((a, b) => a.start - b.start);
-    const merged: Feature['segments'] = [];
-    for (const p of parts) { const last = merged[merged.length - 1]; if (last && p.start <= last.end) last.end = Math.max(last.end, p.end); else merged.push({ ...p }); }
-    if (merged.length > 1) throw new Error(`Feature “${feature.name}” would become discontinuous on the linear extract. Disable feature transfer explicitly, select a different region, or duplicate the circular molecule instead.`);
-    if (featureSelection(feature, doc)!.length === size && region.length === size && featureSelection(feature, doc)!.start !== region.start) throw new Error(`Feature “${feature.name}” spans the full circle with a different biological start. Duplicate the molecule, align the extraction start with the feature, or disable feature transfer.`);
-    const clipped = merged[0].end - merged[0].start !== featureSelection(feature, doc)!.length;
-    if (clipped) clippedCount++;
-    features.push(mappedFeature(feature, merged, feature.strand, clipped));
-  }
+  const projected = projectFeatures(doc, region, { include: options.includeFeatures });
+  if (projected.unresolved) throw new Error('Unresolved feature locations cannot be projected. Disable feature transfer explicitly, or resolve these descriptors first.');
+  const features = projected.features, clippedCount = projected.clipped;
+  const omitted = projected.report.filter(r => r.targetId === null).length;
   const warnings = [`New linear document, ${region.length} bp; ${features.length} feature(s) transferred, ${clippedCount} clipped, ${omitted} omitted.`,
     'The oligo library is copied unchanged, but its PCR recipe is cleared for the new template. Clipped features are marked for review; dependent translations and coordinate qualifiers are archived, not recalculated. The source document is unchanged.'];
   const retained = appendHistory(doc, { action: 'extract', summary: `Extracted ${region.start + 1}..${mod(region.start + region.length - 1, size) + 1} from ${doc.name} (${doc.id}), reference direction.`, warnings });

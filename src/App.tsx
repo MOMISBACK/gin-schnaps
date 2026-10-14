@@ -1,3 +1,8 @@
+import { FeatureTable } from './components/FeatureTable';
+import { FeatureBatchDialog } from './components/FeatureBatchDialog';
+import { CopyFragmentDialog, PasteFragmentDialog } from './components/FragmentDialogs';
+import { fragmentFromClipboard, writeAnnotatedClipboard } from './adapters/annotated-clipboard';
+import type { AnnotatedFragment } from './domain/annotated-fragment';
 import { prepareDirectEdit, type DirectEdit } from './domain/direct-edit';
 import { DocumentBackupDialog } from './components/DocumentBackupDialog';
 import { appendDocumentBackup } from './storage/document-backup';
@@ -59,30 +64,6 @@ function Tool({ icon, children, onClick, disabled = false, title, active }: {
   return <button className={`tool ${children ? 'with-label' : ''} ${active ? 'active' : ''}`} onClick={onClick}
     disabled={disabled} title={title} aria-label={title} aria-pressed={active}><Icon name={icon}/>{children && <span>{children}</span>}</button>;
 }
-function FeatureTable({ entry, select, toggle, edit }: { entry: OpenDocument; select: (s: Selection) => void; toggle: (id: string) => void; edit: (id?: string) => void }) {
-  const [query, setQuery] = useState('');
-  const [expanded, setExpanded] = useState<string | null>(null);
-  const features = entry.doc.features.filter(f => f.name.toLowerCase().includes(query.toLowerCase()));
-  return <div className="table-view">
-    <div className="table-toolbar"><strong>{entry.doc.features.length} annotations</strong><span className="flex-spacer"/>
-      <label className="search-field"><Icon name="search"/><input aria-label="Filter features" placeholder="Filter features" value={query} onChange={e => setQuery(e.target.value)}/></label>
-      <button onClick={() => edit()}>Add…</button></div>
-    <div className="table-scroll"><table><thead><tr><th aria-label="Details"/><th aria-label="Visibility"/><th>Name</th><th>Location</th><th>Length</th><th>Strand</th><th>Type</th><th>Editing</th></tr></thead>
-      <tbody>{features.map(feature => {
-        const selection = featureSelection(feature, entry.doc);
-        const active = !!selection && entry.selection?.start === selection.start && entry.selection?.length === selection.length;
-        return <React.Fragment key={feature.id}><tr className={active ? 'selected-row' : ''}>
-          <td><button className={`icon-button ${expanded === feature.id ? 'expanded' : ''}`} aria-label={`Details of ${feature.name}`} aria-expanded={expanded === feature.id} onClick={() => setExpanded(expanded === feature.id ? null : feature.id)}><Icon name="chevron"/></button></td>
-          <td><button className="icon-button" aria-label={`${entry.hiddenFeatures.includes(feature.id) ? "Show" : "Hide"} ${feature.name}`} aria-pressed={!entry.hiddenFeatures.includes(feature.id)} onClick={() => toggle(feature.id)}><Icon name={entry.hiddenFeatures.includes(feature.id) ? 'eyeOff' : 'eye'}/></button></td>
-          <td><button className="feature-name" onClick={() => { if(selection)select(selection);else setExpanded(feature.id); }}><span className="color-swatch" style={{ background: feature.color }}/>{feature.name}</button></td>
-          <td className="numeric">{formatLocation(feature)}</td><td className="numeric">{feature.unresolved ? 'Unresolved' : `${number(feature.segments.reduce((n,s)=>n+s.end-s.start,0))} bp`}</td><td>{feature.unresolved ? 'See descriptor' : feature.strand === 1 ? '→ (+)' : feature.strand === -1 ? '← (−)' : '—'}</td><td>{feature.type}{feature.reviewRequired && <span className="review-badge">Needs review</span>}</td><td><button className="small-button" aria-label={`Edit ${feature.name}`} onClick={() => edit(feature.id)}>Edit…</button></td>
-        </tr>{expanded === feature.id && <tr className="detail-row"><td colSpan={8}>{feature.unresolved ? <p className="analysis-warning">{feature.unresolved.reason} Descriptor preserved; not projected on the map and not translated.</p> : !selection && <div><p>Select a feature segment:</p>{feature.segments.map((s,i)=><button key={i} onClick={()=>select({start:s.start,length:s.end-s.start})}>Part {i+1}: {s.start+1}..{s.end}</button>)}</div>}<p>Identifier: {feature.id} · Internal location: {feature.segments.map(s => `[${s.start}, ${s.end})`).join(' + ')}</p>
-              {feature.qualifiers.map((q, i) => <p className="qualifier-value" key={i}><code>/{q.key}</code>{q.value !== null && <> = {q.value}</>}{q.key === 'translation' && <strong> — imported</strong>}</p>)}
-              {!!feature.archivedQualifiers.length && <div className="archived-qualifiers"><strong>Archived values (obsolete)</strong>{feature.archivedQualifiers.map((q, i) => <p key={i}><code>/{q.key}</code> = {q.value} · {q.reason}</p>)}</div>}
-            </td></tr>}</React.Fragment>;
-      })}</tbody></table>{!features.length && <p className="empty-message">No features.</p>}</div>
-  </div>;
-}
 function InfoPanel({ entry, close, editTopology }: { entry: OpenDocument; close: () => void; editTopology: () => void }) {
   const range = toUserRange(entry.selection, entry.doc.sequence.length);
   const selectedFeature = entry.doc.features.find(f => { const s = featureSelection(f, entry.doc); return s?.start === entry.selection?.start && s?.length === entry.selection?.length; });
@@ -119,6 +100,11 @@ export default function App() {
   const [pcrInputs, setPcrInputs] = useState<Record<number, PcrOptions>>({});
   const [pendingExport, setPendingExport] = useState<{ key: number; doc: SequenceDocument } | null>(null);
   const [dialog, setDialog] = useState<{ mode: EditMode; key: number; featureId?: string } | null>(null);
+  const [fragmentDialog, setFragmentDialog] = useState<{ kind: 'copy'; entry: OpenDocument; mode: AnnotatedFragment['kind'] } | { kind: 'paste'; entry?: OpenDocument; fragment: AnnotatedFragment } | null>(null);
+  const [batchEntry, setBatchEntry] = useState<OpenDocument | null>(null);
+  const [copiedFragment, setCopiedFragment] = useState<AnnotatedFragment | null>(null);
+  const fragmentGeneration = useRef(0);
+  const [annotationMenu, setAnnotationMenu] = useState<{x: number; y: number} | null>(null);
   const width = useWindowWidth();
   const [explorerWanted, setExplorerWanted] = useState(storedExplorer);
   const [infoWanted, setInfoWanted] = useState(false);
@@ -274,13 +260,43 @@ export default function App() {
     if (!entry?.selection) return;
     const selected = selectedSequence(entry.doc, entry.selection);
     const text = complementary ? reverseComplement(selected) : selected;
-    setCopiedDNA({ sequence: text, sourceName: entry.doc.name });
+    setCopiedFragment(null); setCopiedDNA({ sequence: text, sourceName: entry.doc.name });
     try {
       await writeClipboardText(text);
       setMessage({ text: `${number(text.length)} bp copied${complementary ? " (reverse complement)" : ""}.`, error: false });
     } catch {
       notifyError('System clipboard access was refused. The bases remain in session memory: switch documents, open Paste and choose Use last copied DNA.');
     }
+  };
+  const closeFragment = () => { fragmentGeneration.current++; setFragmentDialog(null); };
+  const openFragmentCopy = (mode: AnnotatedFragment['kind']) => {
+    if (!entry || importBusy.current || nativeBusy || document.querySelector('[role="dialog"]')) return;
+    fragmentGeneration.current++; setMessage(null); setFragmentDialog({kind: 'copy', entry, mode});
+  };
+  const openFragmentPaste = (fragment: AnnotatedFragment) => {
+    if (importBusy.current || nativeBusy || document.querySelector('[role="dialog"]')) return;
+    const current = workspaceRef.current.documents.find(d => d.key === workspaceRef.current.active);
+    fragmentGeneration.current++; setMessage(null); setFragmentDialog({kind: 'paste', entry: current, fragment});
+  };
+  const copyFragment = async (fragment: AnnotatedFragment, cut: boolean) => {
+    if (fragmentDialog?.kind !== 'copy') return;
+    const captured = fragmentDialog.entry, generation = fragmentGeneration.current;
+    const prepared = cut ? prepareCut(captured.doc, captured.selection) : null;
+    setCopiedFragment(fragment); // Explicitly labelled fallback, never matched against plain text.
+    await writeAnnotatedClipboard(fragment);
+    if (generation !== fragmentGeneration.current) return;
+    if (prepared) {
+      const current = workspaceRef.current.documents.find(d => d.key === captured.key);
+      if (!current || workspaceRef.current.active !== captured.key || current.doc !== captured.doc || !cutStillCurrent(prepared, current.doc, current.selection, current.revision, captured.revision)) throw new Error('Fragment copied, but the source changed. Nothing was cut.');
+      dispatch({type: 'commit', key: captured.key, doc: prepared.result.doc, selection: prepared.result.selection});
+    }
+    closeFragment(); setMessage({text: `${fragment.sequence.length} bp and ${fragment.features.length} annotations copied${cut ? ' and source cut' : ''}. If another application strips annotations, use the explicitly labelled session fragment.`, error: false});
+  };
+  const applyAnnotationResult = (captured: OpenDocument | undefined, result: CommandResult) => {
+    const current = workspaceRef.current.documents.find(d => d.key === captured?.key);
+    if (!current || current.doc !== captured?.doc) { notifyError('Document changed. Reopen the annotation operation; nothing was applied.'); return; }
+    dispatch({type: 'commit', key: current.key, doc: result.doc, selection: result.selection});
+    setPendingExport(null); closeFragment(); setBatchEntry(null); setMessage({text: result.warnings.join(' ') || 'Annotations updated.', error: false});
   };
   const cutSelection = async () => {
     if (cutBusy.current || importBusy.current || nativeBusy || document.querySelector('[role="dialog"]')) return;
@@ -290,7 +306,7 @@ export default function App() {
     try {
       const prepared = prepareCut(captured.doc, captured.selection);
       await writeClipboardText(prepared.text);
-      setCopiedDNA({sequence:prepared.text,sourceName:captured.doc.name});
+      setCopiedFragment(null); setCopiedDNA({sequence:prepared.text,sourceName:captured.doc.name});
       const current = workspaceRef.current.documents.find(d => d.key === captured.key);
       if (!current || workspaceRef.current.active !== captured.key || !cutStillCurrent(prepared,current.doc,current.selection,current.revision,captured.revision)) {
         notifyError('Bases copied, but the document or selection changed. Nothing was cut.'); return;
@@ -361,11 +377,12 @@ export default function App() {
       if (event.defaultPrevented || isTextEntry(event.target) || hasSelectedText() || document.querySelector('[role="dialog"]') || !entry?.selection || !event.clipboardData) return;
       const text = selectedSequence(entry.doc, entry.selection);
       event.preventDefault(); event.clipboardData.clearData(); event.clipboardData.setData('text/plain', text);
-      setCopiedDNA({ sequence: text, sourceName: entry.doc.name });
+      setCopiedFragment(null); setCopiedDNA({ sequence: text, sourceName: entry.doc.name });
     };
     const paste = (event: ClipboardEvent) => {
       if (event.defaultPrevented || isTextEntry(event.target) || document.querySelector('[role="dialog"]') || importBusy.current || nativeBusy || !event.clipboardData) return;
-      event.preventDefault(); openPaste(event.clipboardData.getData('text/plain'));
+      event.preventDefault();
+      try { const fragment = fragmentFromClipboard(event.clipboardData); if (fragment) openFragmentPaste(fragment); else openPaste(event.clipboardData.getData('text/plain')); } catch (error) { notifyError((error as Error).message); }
     };
     const cut = (event: ClipboardEvent) => {
       if (event.defaultPrevented || isTextEntry(event.target) || hasSelectedText() || document.querySelector('[role="dialog"]') || !entry?.selection) return;
@@ -439,7 +456,7 @@ export default function App() {
     onDragOver={event => { if (event.dataTransfer.types.includes('Files')) event.preventDefault(); }}
     onDrop={event => { event.preventDefault(); void importFiles(event.dataTransfer.files); }}>
     <input ref={fileInput} type="file" accept=".fa,.fasta,.fna,.gb,.gbk,.genbank,.embl,.txt,.dna,.sg.json,.json" hidden data-testid="file-input" onChange={e => { if (e.target.files) void importFiles(e.target.files); }}/>
-    <header className="document-strip"><div className="brand"><button className="icon-button" aria-label="Show or hide explorer" aria-pressed={layout.explorer} onClick={toggleExplorer}><Icon name="panel"/></button><strong>Gin Schnaps</strong><span className="version">0.8.7</span></div>
+    <header className="document-strip"><div className="brand"><button className="icon-button" aria-label="Show or hide explorer" aria-pressed={layout.explorer} onClick={toggleExplorer}><Icon name="panel"/></button><strong>Gin Schnaps</strong><span className="version">0.8.8</span></div>
       <div className="document-tabs" role="tablist" aria-label="Open documents">{workspace.documents.map(doc => <div key={doc.key} className={`document-tab ${doc.key === workspace.active ? 'active' : ''}`}>
         <button role="tab" aria-selected={doc.key === workspace.active} title={doc.doc.name} aria-label={doc.doc.name} onClick={() => dispatch({ type: 'activate', key: doc.key })}><Icon name={doc.doc.topology === 'circular' ? 'circle' : 'linear'}/><span>{doc.doc.name}</span>{needsExport(doc) && <span className="dirty-dot" aria-label="Unexported changes">●</span>}</button>
         <button className="icon-button close-document" aria-label={`Close ${doc.doc.name}`} onClick={() => closeDocument(doc.key)}><Icon name="close" size={12}/></button>
@@ -473,7 +490,7 @@ export default function App() {
           <button disabled={!entry} onClick={() => { setMessage(null); setDocumentDialog('reverse-complement'); }} title="Reverse-complement the entire molecule">Reverse complement…</button>
           <button disabled={entry?.doc.topology !== 'circular'} onClick={() => { setMessage(null); setDocumentDialog('rotate-origin'); }}>Set origin…</button>
           <button disabled={!entry?.selection} onClick={() => void copySelection(true)} title="Copy selection as reverse complement (⌘/Ctrl ⇧ C)">Copy RC</button>
-          <span className="flex-spacer"/><button disabled={!entry} aria-pressed={searchOpen} onClick={() => setSearchOpen(!searchOpen)} title="Find DNA motif (⌘/Ctrl F)"><Icon name="search"/>Find</button>
+          <button disabled={!entry?.selection} onClick={() => openEditor('feature')}>Annotate selection</button><button disabled={!entry?.selection} onClick={() => openFragmentCopy('dna-features')}>Copy DNA + features</button><button disabled={!copiedFragment} title="Use the labelled fragment retained in this application session, not a fresh clipboard read" onClick={() => copiedFragment && openFragmentPaste(copiedFragment)}>Paste session fragment…</button><span className="flex-spacer"/><button disabled={!entry} aria-pressed={searchOpen} onClick={() => setSearchOpen(!searchOpen)} title="Find DNA motif (⌘/Ctrl F)"><Icon name="search"/>Find</button>
         </div>
         {!entry ? <EmptyView icon="folder" title="No document open">Open a FASTA, GenBank or .sg.json file, or <button onClick={() => openDemo()}>load the synthetic example</button>.</EmptyView> : <div className="workspace-columns">
           <section className="view-panel" aria-label="Active document">
@@ -486,7 +503,10 @@ export default function App() {
             <div className="document-context"><span>{entry.doc.name}</span><span className="muted">{number(entry.doc.sequence.length)} bp · {entry.doc.topology === 'circular' ? "circular" : "linear"}</span>
               <span className="flex-spacer"/>{entry.doc.provenance === 'synthetic-demo' && <span className="demo-badge">SYNTHETIC DATA</span>}</div>
             {explorerWanted && !layout.explorer && layout.info && <div className="compact-notice">Explorer temporarily hidden to preserve document width.</div>}
-            <div id="active-view" className="active-view" role="tabpanel" aria-labelledby={`tab-${entry.view}`}>
+            <div id="active-view" className="active-view" onContextMenu={event => {
+              if (!entry.selection || isTextEntry(event.target) || document.querySelector('[role="dialog"]') || !(event.target instanceof Element) || !event.target.closest('.map-navigation,.sequence-viewport')) return;
+              event.preventDefault(); setAnnotationMenu({x: Math.min(event.clientX, window.innerWidth - 210), y: Math.min(event.clientY, window.innerHeight - 130)});
+            }} role="tabpanel" aria-labelledby={`tab-${entry.view}`}>
               {!entry.doc.sequence.length && !['features','history','sequence','split'].includes(entry.view) && <EmptyView icon="sequence" title="Empty sequence"><button onClick={()=>openPaste()}>Paste DNA</button></EmptyView>}
               {entry.doc.sequence.length > 0 && (entry.view === 'map' || entry.view === 'sequence') && <div className="display-rail" role="toolbar" aria-label="Display">
                 <Tool icon="circle" title="Circular presentation" disabled={entry.doc.topology !== 'circular'} active={entry.presentation === 'circular'} onClick={() => dispatch({ type: 'presentation', presentation: 'circular' })}/>
@@ -497,7 +517,7 @@ export default function App() {
               {entry.doc.sequence.length > 0 && entry.view === 'map' && <MapView entry={entry} onSelect={select} labels={labels}/>}
               {entry.view === 'sequence' && <SequenceView {...typingProps} key={entry.key} entry={entry} onSelect={select} reverse={reverse} labels={labels} onViewport={setViewport} onScroll={scrollTop => dispatch({ type: 'scroll', scrollTop })} onEditFeature={id => openEditor('feature', id)} onShowFeatures={() => dispatch({ type: 'view', view: 'features' })}/>}
               {entry.view === 'split' && <SplitView {...typingProps} key={`split-${entry.key}`} entry={entry} labels={labels} reverse={reverse} onSelect={select} onScroll={scrollTop=>dispatch({type:'scroll',scrollTop})} onEditFeature={id=>openEditor('feature',id)} onShowFeatures={()=>dispatch({type:'view',view:'features'})} onPresentation={presentation=>dispatch({type:'presentation',presentation})} onLabels={()=>setLabels(!labels)} onReverse={()=>setReverse(!reverse)}/>}
-              {entry.view === 'features' && <FeatureTable key={entry.key} entry={entry} select={select} toggle={id => dispatch({ type: 'visibility', id })} edit={id => openEditor('feature', id)}/>}
+              {entry.view === 'features' && <FeatureTable key={entry.key} entry={entry} select={select} toggle={id => dispatch({ type: 'visibility', id })} edit={id => openEditor('feature', id)} selectFeatures={ids => dispatch({type: 'select-features', ids})} onCopyFeatures={() => openFragmentCopy('features-only')} onBatch={() => setBatchEntry(entry)}/>}
               {entry.doc.sequence.length > 0 && entry.view === 'translation' && <TranslationPanel key={entry.key} entry={entry}/>}
               {entry.doc.sequence.length > 0 && entry.view === 'enzymes' && <RestrictionPanel key={entry.key} entry={entry} onSelect={s => { select(s); dispatch({ type: 'view', view: 'map' }); }}/>}
               {entry.doc.sequence.length > 0 && entry.view === 'primers' && <PcrPanel onCreateProduct={(doc, source) => {
@@ -517,14 +537,28 @@ export default function App() {
       </main>
     </div>
     <footer className="status-bar" role="status"><span>{loading ? "Reading file…" : entry ? `${number(entry.doc.sequence.length)} bp · DNA ${entry.doc.topology === 'circular' ? "circular" : "linear"}` : "No document"}</span><span className="status-selection" data-testid="selection-status">{range ? `Selection ${number(range.start)} → ${number(range.end)} · ${number(entry!.selection!.length)} bp${range.end < range.start ? " · crosses origin" : ''}` : "No selection"}</span><span className="flex-spacer"/><button className="recovery-toggle" disabled={nativeBusy || loading} onClick={() => { if (!document.querySelector('[role="dialog"]') && !importBusy.current) setBackupOpen(true); }}>Backups</button><button className="recovery-toggle" onClick={() => setRecoveryOpen(true)}>Recovery</button>{draftEntries.length > 0 && <span>{draftEntries.length} PCR draft(s) not saved</span>}<button className="recovery-toggle" onClick={() => setHelpOpen(true)}>Help</button></footer>
-    {backupOpen && <DocumentBackupDialog workspace={workspace} inputs={pcrInputs} version="0.8.7" onClose={() => setBackupOpen(false)} onRestore={backup => {
+    {backupOpen && <DocumentBackupDialog workspace={workspace} inputs={pcrInputs} version="0.8.8" onClose={() => setBackupOpen(false)} onRestore={backup => {
       const restored = appendDocumentBackup(workspaceRef.current, pcrInputs, backup);
       dispatch({ type: 'append-backup', expectedNextKey: workspaceRef.current.nextKey, workspace: restored.workspace });
       setPcrInputs(restored.inputs); setBackupOpen(false); setPendingExport(null);
       setMessage({text:'Backup restored as new unsaved tabs. Existing documents are unchanged.',error:false});
     }}/>}
-    {helpOpen && <HelpDialog version="0.8.7" onClose={() => setHelpOpen(false)}/>}
-    {pasteDialog && <PasteDialog caret={pasteDialog.caret} doc={pasteDialog.doc} selection={pasteDialog.selection} initialText={pasteDialog.text} copied={copiedDNA} canCreate={workspace.documents.length < MAX_OPEN_DOCUMENTS} onClose={() => setPasteDialog(null)} onApply={applyPaste} onCreate={createPastedDocument}/>}
+    {helpOpen && <HelpDialog version="0.8.8" onClose={() => setHelpOpen(false)}/>}
+    {pasteDialog && <PasteDialog onAnnotatedClipboard={fragment => {
+      const target = workspaceRef.current.documents.find(d => d.key === pasteDialog.key);
+      if (target?.doc !== pasteDialog.doc) { notifyError('The destination changed. Reopen Paste.'); return; }
+      setPasteDialog(null); fragmentGeneration.current++; setFragmentDialog({kind: 'paste', entry: target, fragment});
+    }} caret={pasteDialog.caret} doc={pasteDialog.doc} selection={pasteDialog.selection} initialText={pasteDialog.text} copied={copiedDNA} canCreate={workspace.documents.length < MAX_OPEN_DOCUMENTS} onClose={() => setPasteDialog(null)} onApply={applyPaste} onCreate={createPastedDocument}/>}
+    {annotationMenu && <div className="annotation-context-shield" onMouseDown={() => setAnnotationMenu(null)} onKeyDown={e => { if (e.key === 'Escape') setAnnotationMenu(null); }}>
+      <div role="menu" aria-label="Selected DNA actions" className="annotation-context-menu" style={{left: annotationMenu.x, top: annotationMenu.y}} onMouseDown={e => e.stopPropagation()}>
+        <button role="menuitem" autoFocus onClick={() => {setAnnotationMenu(null); openEditor('feature');}}>Annotate selection</button>
+        <button role="menuitem" onClick={() => {setAnnotationMenu(null); void copySelection();}}>Copy DNA</button>
+        <button role="menuitem" onClick={() => {setAnnotationMenu(null); openFragmentCopy('dna-features');}}>Copy DNA + features</button>
+      </div></div>}
+    {fragmentDialog?.kind === 'copy' && <CopyFragmentDialog entry={fragmentDialog.entry} kind={fragmentDialog.mode} onClose={closeFragment} onCopy={copyFragment}/>}
+    {fragmentDialog?.kind === 'paste' && <PasteFragmentDialog entry={fragmentDialog.entry} fragment={fragmentDialog.fragment} canCreate={workspace.documents.length < MAX_OPEN_DOCUMENTS} onClose={closeFragment}
+      onApply={r => applyAnnotationResult(fragmentDialog.entry, r)} onCreate={doc => { if (workspaceRef.current.documents.length >= MAX_OPEN_DOCUMENTS) { notifyError('Maximum open documents reached.'); return; } dispatch({type: 'open', documents: [doc], source: 'Annotated fragment', dirty: true}); closeFragment(); }}/ >}
+    {batchEntry && <FeatureBatchDialog doc={batchEntry.doc} ids={batchEntry.selectedFeatureIds ?? []} onClose={() => setBatchEntry(null)} onApply={r => applyAnnotationResult(batchEntry, r)}/>}
     {dialog && entry && <EditDialog key={`${dialog.key}-${dialog.mode}-${dialog.featureId ?? "new"}`} doc={entry.doc} selection={entry.selection} mode={dialog.mode} featureId={dialog.featureId} onClose={() => setDialog(null)} onApply={applyEdit}/>}
     <RecoveryPanel workspace={workspace} modalOpen={recoveryOpen} onClose={() => setRecoveryOpen(false)} restore={snapshot => {
       if (draftEntries.length && !window.confirm('Discard unsaved PCR drafts and replace this workspace with the recovered session?')) return false;

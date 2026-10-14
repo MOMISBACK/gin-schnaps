@@ -1,3 +1,5 @@
+import { fragmentFromClipboard } from '../adapters/annotated-clipboard';
+import type { AnnotatedFragment } from '../domain/annotated-fragment';
 import React, { useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { type CommandResult } from '../domain/commands';
 import { createDocument, newDocumentId } from '../domain/document-operations';
@@ -7,9 +9,9 @@ import { Icon } from './Icon';
 import { HelpDetails } from './HelpDetails';
 
 export type CopiedDNA = { sequence: string; sourceName: string };
-export function PasteDialog({ doc, selection, initialText, copied, canCreate, onClose, onApply, onCreate, caret }: {
+export function PasteDialog({ doc, selection, initialText, copied, canCreate, onClose, onApply, onCreate, caret, onAnnotatedClipboard }: {
   caret?: number; doc?: SequenceDocument; selection: Selection; initialText: string; copied: CopiedDNA | null; canCreate: boolean;
-  onClose: () => void; onApply: (result: CommandResult) => void; onCreate: (doc: SequenceDocument) => void;
+  onClose: () => void; onApply: (result: CommandResult) => void; onCreate: (doc: SequenceDocument) => void; onAnnotatedClipboard?: (fragment: AnnotatedFragment) => void;
 }) {
   const range = doc ? toUserRange(selection, doc.sequence.length) : null;
   const [mode, setMode] = useState<'insert' | 'replace' | 'new'>(!doc ? 'new' : selection ? 'replace' : 'insert');
@@ -43,7 +45,7 @@ export function PasteDialog({ doc, selection, initialText, copied, canCreate, on
       const value = await navigator.clipboard.readText();
       if (!mounted.current) return;
       if (revision !== inputRevision.current) { setClipboardNotice('Clipboard result ignored because you edited the text while it was being read.'); return; }
-      setDNA(value);
+      setDNA(value); setClipboardNotice('Text-only clipboard read. For annotated content, use ⌘/Ctrl V in an empty DNA box or the explicitly labelled session fragment.');
     } catch {
       if (mounted.current) setClipboardNotice('Clipboard reading is unavailable or denied. Click the DNA box and press ⌘/Ctrl V, or explicitly use the last copied DNA.');
     } finally { if (mounted.current) { setReading(false); input.current?.focus(); } }
@@ -84,7 +86,13 @@ export function PasteDialog({ doc, selection, initialText, copied, canCreate, on
               // One explicit replacement avoids native/controlled-input divergence
               // and rejects the entire over-limit paste, rather than truncating it.
               event.preventDefault();
-              const box = event.currentTarget, incoming = event.clipboardData.getData('text/plain');
+              const box = event.currentTarget;
+              try {
+                const fragment = fragmentFromClipboard(event.clipboardData);
+                if (fragment && !box.value && onAnnotatedClipboard) { onAnnotatedClipboard(fragment); return; }
+                if (fragment) setClipboardNotice('Bases only pasted into an existing text edit; clipboard annotation metadata was not used.');
+              } catch (error) { setInputError((error as Error).message); return; }
+              const incoming = event.clipboardData.getData('text/plain');
               const before = box.selectionStart, after = box.selectionEnd;
               const next = box.value.slice(0, before) + incoming + box.value.slice(after);
               setDNA(next);

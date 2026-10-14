@@ -53,6 +53,22 @@
     if(a.schemaVersion!==5||a.sequence.length!==4800)throw new Error('Wrong initial saved document');
     if(!document.querySelector('.native-file-bar').textContent.includes('first.sg.json'))throw new Error('Missing saved path');
     mark('Native Save As writes and rereads the full schema-5 document');
+    // Inject structured clipboard data to exercise native renderer -> commands ->
+    // disk round-trip. Physical OS clipboard delivery is separately tested in Chromium.
+    const annotated={format:'gin-schnaps-fragment',version:1,kind:'dna-features',sequence:a.sequence.slice(0,30),
+      features:[{id:'native-fragment-feature',name:'Native copied feature',type:'misc_feature',strand:-1,color:'#336699',
+        segments:[{start:2,end:9}],qualifiers:[{key:'note',value:'Synthetic copied annotation'}],archivedQualifiers:[],reviewRequired:false}],
+      source:{name:'Native synthetic source',id:'native-source',start:0,length:30,moleculeLength:a.sequence.length},clipped:0,unresolvedOmitted:0};
+    const clipboard=new DataTransfer();clipboard.setData('text/plain',annotated.sequence);
+    clipboard.setData('application/x-gin-schnaps-fragment+json',JSON.stringify(annotated));
+    window.dispatchEvent(new ClipboardEvent('paste',{clipboardData:clipboard,bubbles:true,cancelable:true}));
+    await input('Annotated paste start','1');await click('Apply annotated paste');dismiss();await click('Save');await settled();dismiss();
+    const pastedAnnotation=JSON.parse(await control('read-first'));
+    const copiedAnnotation=pastedAnnotation.features.find(f=>f.name==='Native copied feature');
+    if(pastedAnnotation.sequence!==annotated.sequence+a.sequence||!copiedAnnotation||copiedAnnotation.id===annotated.features[0].id||copiedAnnotation.strand!==-1||JSON.stringify(copiedAnnotation.segments)!=='[{"start":2,"end":9}]')throw new Error('Native annotated paste lost its bases, identity or geometry');
+    await click('Undo (⌘/Ctrl Z)');await click('Save');await settled();dismiss();
+    if(await control('read-first')!==first)throw new Error('Native annotated paste Undo did not restore exact predecessor');
+    mark('Structured annotated paste uses real native Save and exact Undo; input event is synthetic, not an OS clipboard claim');
     await click('Paste DNA (⌘/Ctrl V)');await input('DNA to paste','ACGT');await click('Apply paste');dismiss();
     await click('Save');await settled();dismiss();
     const pasted=JSON.parse(await control('read-first'));
@@ -69,11 +85,14 @@
     await click('Undo (⌘/Ctrl Z)');await click('Save');await settled();dismiss();
     if(await control('read-first')!==first)throw new Error('Undo typing did not restore the exact native file');
     await click('Type DNA');await click('Map');
-    const mapNavigation=await wait(()=>document.querySelector('[data-testid="map-navigation"]'),'map camera');
+    const mapNavigation=await wait(()=>{const n=document.querySelector('[data-testid="map-navigation"]');return n?.dataset.navigationReady==='true'&&n.getBoundingClientRect().width>0?n:null;},'map camera with installed wheel handler');
     const rect=mapNavigation.getBoundingClientRect();
     mapNavigation.dispatchEvent(new WheelEvent('wheel',{deltaY:-100,deltaMode:0,clientX:rect.left+rect.width/2,clientY:rect.top+rect.height/2,bubbles:true,cancelable:true}));
-    await sleep(80);
-    if(Number(mapNavigation.dataset.zoom)<=1)throw new Error('Map wheel event did not zoom in the system WebView');
+    await wait(()=>Number(mapNavigation.dataset.zoom)>1,'wheel zoom state in system WebView');
+    const zoomAfterWheel=Number(mapNavigation.dataset.zoom);
+    window.dispatchEvent(new Event('resize'));
+    await sleep(150);
+    if(Number(mapNavigation.dataset.zoom)!==zoomAfterWheel)throw new Error('Resize reset a user camera gesture');
     await click('Save');await settled();dismiss();
     if(await control('read-first')!==first)throw new Error('Map camera changed native scientific data');
     await click('Fit');

@@ -1,3 +1,5 @@
+import { FeatureLocationEditor } from './FeatureLocationEditor';
+import { CdsFields } from './CdsFields';
 import { editorLocation, simpleEditorRange, renderLocation } from '../domain/locations';
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { executeCommand, type Command, type CommandResult } from '../domain/commands';
@@ -15,6 +17,8 @@ export function EditDialog({ doc, selection, mode, featureId, onClose, onApply }
   const [advanced,setAdvanced]=useState(!!existing && !featureSelection(existing,doc));
   const [expression,setExpression]=useState(existing ? existing.unresolved?.expression ?? renderLocation(existing.segments,existing.strand) : '1..1');
   const [unstranded, setUnstranded] = useState(existing?.strand === 0);
+  const [segmentInitial, setSegmentInitial] = useState<Pick<Feature, 'segments' | 'strand'> | null>(null);
+  const [explicitKeys, setExplicitKeys] = useState<string[]>([]);
   const [modeError, setModeError] = useState('');
   const [operation, setOperation] = useState<'replace' | 'insert' | 'delete'>('replace');
   const [start, setStart] = useState(String(range?.start ?? 1)), [end, setEnd] = useState(String(range?.end ?? 1));
@@ -47,14 +51,15 @@ export function EditDialog({ doc, selection, mode, featureId, onClose, onApply }
       else {
         const location=advanced?editorLocation(expression,doc.sequence.length,doc.topology==='circular',unstranded):null;
         const selected = advanced?null:fromUserRange(Number(start), Number(end), doc.sequence.length, doc.topology === 'circular');
-        command = { kind: 'feature', feature: { id: existing?.id ?? newId.current, name, type, color, strand:location?.strand??strand, ...(location?.unresolved?{unresolved:location.unresolved}:{}),
+        command = { kind: 'feature', explicitQualifierKeys: explicitKeys, feature: { id: existing?.id ?? newId.current, name, type, color, strand:location?.strand??strand, ...(location?.unresolved?{unresolved:location.unresolved}:{}),
           segments: location?.segments??selectionSegments(selected, doc.sequence.length), qualifiers,
           archivedQualifiers: existing?.archivedQualifiers ?? [], reviewRequired: existing?.reviewRequired ?? true } };
       }
       return { result: executeCommand(doc, command) };
     } catch (error) { return { error: error instanceof Error ? error.message : "Invalid edit." }; }
-  }, [doc, mode, existing, operation, start, end, normalized, name, type, color, strand, qualifiers, remove, topology, advanced, expression, unstranded]);
+  }, [doc, mode, existing, operation, start, end, normalized, name, type, color, strand, qualifiers, remove, topology, advanced, expression, unstranded, explicitKeys]);
   const switchLocationMode = (next: boolean) => {
+    setSegmentInitial(null);
     try {
       if (next) {
         const selected = fromUserRange(Number(start), Number(end), doc.sequence.length, doc.topology === 'circular');
@@ -69,7 +74,16 @@ export function EditDialog({ doc, selection, mode, featureId, onClose, onApply }
     } catch (error) { setModeError((error as Error).message); }
   };
   const title = mode === 'bases' ? "Edit DNA sequence" : mode === 'topology' ? "Set topology" : existing ? "Edit feature" : "New feature";
-  const patchQualifier = (index: number, patch: Partial<Qualifier>) => setQualifiers(old => old.map((q, i) => i === index ? { ...q, ...patch } : q));
+  const declare = (...keys: string[]) => setExplicitKeys(old => Array.from(new Set([...old, ...keys])));
+  const patchQualifier = (index: number, patch: Partial<Qualifier>) => { declare(qualifiers[index].key, patch.key ?? qualifiers[index].key); setQualifiers(old => old.map((q, i) => i === index ? { ...q, ...patch } : q)); };
+  const openSegments = () => {
+    try {
+      const location = advanced ? editorLocation(expression, doc.sequence.length, doc.topology === 'circular', unstranded)
+        : {segments: selectionSegments(fromUserRange(Number(start), Number(end), doc.sequence.length, doc.topology === 'circular'), doc.sequence.length), strand};
+      if ('unresolved' in location && location.unresolved) throw new Error('An unresolved descriptor cannot be converted to exact segments. Resolve it explicitly first.');
+      setExpression(renderLocation(location.segments, location.strand)); setUnstranded(location.strand === 0); setAdvanced(true); setSegmentInitial(location); setModeError('');
+    } catch (e) { setModeError((e as Error).message); }
+  };
   return <div className="modal-overlay" onDrop={e => { e.preventDefault(); e.stopPropagation(); }}>
     <div className="edit-dialog" ref={dialog} role="dialog" aria-modal="true" aria-labelledby="edit-title"
       onKeyDown={event => {
@@ -95,19 +109,22 @@ export function EditDialog({ doc, selection, mode, featureId, onClose, onApply }
                 <label className="form-row">Strand<select aria-label="Feature strand" disabled={advanced} value={advanced ? (unstranded ? 0 : preview.result?.doc.features.find(f=>f.id===(existing?.id??newId.current))?.strand ?? strand) : strand} onChange={e => setStrand(Number(e.target.value) as Feature['strand'])}><option value="1">Forward (+)</option><option value="-1">Reverse (−)</option><option value="0">Unstranded</option></select></label>
                 <label className="color-input">Colour<input aria-label="Feature colour" type="color" value={color} onChange={e => setColor(e.target.value)}/></label></div></>}
             {mode==='feature' && <label className="analysis-check"><input type="checkbox" checked={advanced} onChange={e=>switchLocationMode(e.target.checked)}/>Use a location expression (join, complement, uncertain or remote)</label>}
-            {mode==='feature' && advanced ? <label className="form-row">Location expression<textarea aria-label="Feature location expression" value={expression} onChange={e=>{setModeError('');setExpression(e.target.value);}} maxLength={10000}/><span className="field-note">Exact joins retain separate parts. Unresolved descriptors are not mapped.</span></label> : <div className="form-columns coordinates"><label className="form-row">{mode === 'bases' && operation === 'insert' ? "Before base" : "Start"}<input aria-label="Edit start" value={start} onChange={e => setStart(e.target.value)} inputMode="numeric"/></label>
+            {mode === 'feature' && <button type="button" disabled={!!segmentInitial} onClick={openSegments}>Edit segments…</button>}
+            {mode === 'feature' && segmentInitial && <FeatureLocationEditor feature={segmentInitial} onChange={(value, unstranded) => { setExpression(value); setUnstranded(unstranded); }} onClose={() => setSegmentInitial(null)}/>}
+            {mode==='feature' && advanced ? <label className="form-row">Location expression<textarea aria-label="Feature location expression" readOnly={!!segmentInitial} value={expression} onChange={e=>{setModeError('');setExpression(e.target.value);}} maxLength={10000}/><span className="field-note">Exact joins retain separate parts. Unresolved descriptors are not mapped.</span></label> : <div className="form-columns coordinates"><label className="form-row">{mode === 'bases' && operation === 'insert' ? "Before base" : "Start"}<input aria-label="Edit start" value={start} onChange={e => setStart(e.target.value)} inputMode="numeric"/></label>
               {!(mode === 'bases' && operation === 'insert') && <label className="form-row">End<input aria-label="Edit end" value={end} onChange={e => setEnd(e.target.value)} inputMode="numeric"/></label>}</div>}
-            {mode === 'feature' && advanced && <label className="analysis-check"><input type="checkbox" checked={unstranded} onChange={e=>setUnstranded(e.target.checked)}/>Unstranded exact feature</label>}
+            {mode === 'feature' && advanced && !segmentInitial && <label className="analysis-check"><input type="checkbox" checked={unstranded} onChange={e=>setUnstranded(e.target.checked)}/>Unstranded exact feature</label>}
             {modeError && <p className="validation-error" role="status">{modeError}</p>}
             <HelpDetails label="Coordinates & editing"><p>1-based, inclusive. Start &gt; end crosses a circular origin. Insert at {doc.sequence.length + 1} to append.</p><p>Insertions at feature boundaries are excluded. Replacement inherits a feature only when strictly inside it. Deleted features are not transferred.</p></HelpDetails>
           </>}
           {mode === 'bases' && operation !== 'delete' && <label className="form-row">DNA to insert (reference strand, 5′ → 3′)<textarea className="dna-input" aria-label="DNA to insert" rows={4} value={dna} onChange={e => setDna(e.target.value)} spellCheck={false}/><span className="field-note">{normalized.length} bp · IUPAC DNA{dna !== normalized ? " · normalized to uppercase without whitespace" : ""}</span></label>}
           {mode === 'bases' && <p className="field-note">Review affected features below.</p>}
+          {mode === 'feature' && type === 'CDS' && <CdsFields qualifiers={qualifiers} doc={doc} feature={preview.result?.doc.features.find(f => f.id === (existing?.id ?? newId.current))} onChange={(key, value) => { declare(key); setQualifiers(old => [...old.filter(q => q.key !== key), ...(value === '' ? [] : [{key, value}])]); }}/>}
           {mode === 'feature' && <section className="qualifier-editor"><h3>Qualifiers</h3>
             {qualifiers.map((q, i) => <div className="qualifier-row" key={i}><input aria-label={`Key ${i + 1}`} placeholder="note, gene, transl_table…" value={q.key} onChange={e => patchQualifier(i, { key: e.target.value })}/>
               <input aria-label={`Value ${i + 1}`} value={q.value ?? ''} disabled={q.value === null} onChange={e => patchQualifier(i, { value: e.target.value })}/>
               <label><input type="checkbox" checked={q.value === null} onChange={e => patchQualifier(i, { value: e.target.checked ? null : '' })}/>Flag (no value)</label>
-              <button type="button" className="icon-button" aria-label={`Remove qualifier ${i + 1}`} onClick={() => setQualifiers(old => old.filter((_, j) => i !== j))}><Icon name="close"/></button></div>)}
+              <button type="button" className="icon-button" aria-label={`Remove qualifier ${i + 1}`} onClick={() => { declare(q.key); setQualifiers(old => old.filter((_, j) => i !== j)); }}><Icon name="close"/></button></div>)}
             <button type="button" disabled={qualifiers.length >= 200} onClick={() => setQualifiers(old => [...old, { key: 'note', value: '' }])}>Add qualifier</button>
             {!!existing?.archivedQualifiers.length && <p className="field-note">{existing.archivedQualifiers.length} archived values remain available in the feature details.</p>}
             {existing && <label className="delete-feature"><input type="checkbox" checked={remove} onChange={e => setRemove(e.target.checked)}/>Delete this feature (does not delete bases)</label>}
