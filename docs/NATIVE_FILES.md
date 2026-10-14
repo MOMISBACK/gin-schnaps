@@ -42,8 +42,9 @@ instead of silently overwriting evidence. Backups remain independently available
 This is best-effort recovery, not a replacement for independent saved-file backups.
 
 Browser recovery is retained unchanged. Migration is explicit: export native
-`.sg.json` from the browser, then open it in the desktop app. Unsaved form fields,
-computed results, file grants and session undo are never serialized.
+`.sg.json` from the browser, then open it in the desktop app. Automatic recovery excludes unsaved form fields, computed results, file grants
+and session undo. Explicit [portable backups](DOCUMENT_BACKUPS.md) can separately
+retain PCR form drafts, but never native file grants or undo stacks.
 
 ## Closing
 

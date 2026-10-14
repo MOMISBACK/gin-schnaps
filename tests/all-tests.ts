@@ -24,3 +24,5 @@ import './message-policy.test';
 import './workspace-export.test';
 
 import './pcr-document.test';
+
+import './document-backup.test';

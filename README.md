@@ -30,7 +30,7 @@ the number printed on the release you selected (not text to type into a URL):
 They are not the ready-to-run application. Older Macs can use the browser package;
 native compatibility with every older macOS version has not been established.
 
-[Installation and troubleshooting](docs/INSTALL.md) · [Installation acceptance checklist](docs/INSTALLATION_CHECKLIST.md) · [First steps](docs/USER_GUIDE.md)
+[Portable backups](docs/DOCUMENT_BACKUPS.md) · [Installation and troubleshooting](docs/INSTALL.md) · [Installation acceptance checklist](docs/INSTALLATION_CHECKLIST.md) · [First steps](docs/USER_GUIDE.md)
 
 ![Gin Schnaps showing an annotated plasmid](docs/images/overview.png)
 

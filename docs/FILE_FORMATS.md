@@ -51,3 +51,9 @@ inputs, selected product and feature-transfer report. Geometry and sequence are
 validated on import; hashes can be verified explicitly in History. Native formats
 1–6 retain their existing behavior. Interchange formats do not retain this record.
 See [PCR products](PCR_PRODUCTS.md) for size, privacy and validation boundaries.
+
+## Portable backups
+
+`.gin-backup.json` is a separate versioned container for documents and PCR form
+drafts. Use **Backups**, not ordinary sequence Open. Checksum validation precedes
+all-or-nothing restoration into new unsaved tabs. See [backup format](DOCUMENT_BACKUPS.md).

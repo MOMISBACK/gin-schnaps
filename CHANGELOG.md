@@ -1,5 +1,18 @@
 # Changelog
 
+## 0.8.6 — portable document backups (preview)
+
+- Export all open native documents, oligos, creation records and separate PCR
+  drafts to a checksummed `.gin-backup.json` file.
+- Validate the complete file before appending unsaved copies in new tabs. Existing
+  documents, files, drafts and native write grants are never replaced or restored.
+- Preserve invalid/incomplete draft values without converting them to saved recipes;
+  allow explicit exclusion of drafts during restore. Checksums are not signatures.
+- Enforce 12 MB file / 4 MB entry / 16-document limits without truncation.
+- Add browser and native file regressions. Scientific engine/schema are unchanged.
+- See [portable backups](docs/DOCUMENT_BACKUPS.md) for what is excluded and how to
+  move work from an older application. Signing, old-Mac and Linux security limits remain.
+
 ## 0.8.5 — PCR products as documents (preview)
 
 - Create one explicitly selected theoretical PCR product as an unsaved linear document.

@@ -162,3 +162,12 @@ confirmations remain visible. User names, notes and imported history are not rew
 Use **Create…** on a simulated product row, review its feature transfer, then
 **Create document**. Save the new document to retain its inputs and provenance.
 The source stays open and unchanged. Full instructions: [PCR product documents](PCR_PRODUCTS.md).
+
+## Moving open work to another version or device
+
+Use **Backups → Export document backup**, then **Backups → Open backup…** in the
+new application. Restore appends unsaved copies without overwriting open work.
+The backup includes PCR drafts separately from saved setups; the ordinary Native
+export and automatic recovery still require **Save PCR setup** to retain them.
+Check download receipt, keep the file private, and save restored documents explicitly.
+See [portable backups](DOCUMENT_BACKUPS.md) for bounds and exclusions.

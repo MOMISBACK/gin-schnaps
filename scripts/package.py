@@ -16,7 +16,9 @@ Export important documents as .sg.json before moving or replacing older folders.
 Recovery is optional, unencrypted, tied to browser profile/path, and not a backup.
 Use Native to request a download, then confirm receipt in the application.
 GenBank export is a conversion; exporting original source restores the old file.
-Save PCR setup explicitly before exporting the document.
+Save PCR setup explicitly before exporting the document. Backups can also export
+open documents and separate unsaved PCR drafts to a portable .gin-backup.json file.
+Restore via Backups, not ordinary Open; keep the file private and save the new tabs.
 
 Examples are synthetic and have no experimental validation. This is a preview.
 Optional diagnostic.html uses synthetic data only and never uploads automatically.

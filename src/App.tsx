@@ -1,3 +1,5 @@
+import { DocumentBackupDialog } from './components/DocumentBackupDialog';
+import { appendDocumentBackup } from './storage/document-backup';
 import { PcrCreationPanel } from './components/analysis/PcrCreationPanel';
 import { SplitView } from './components/SplitView';
 import { editShortcut, prepareCut, cutStillCurrent } from './domain/editor-actions';
@@ -120,6 +122,7 @@ export default function App() {
   const [explorerWanted, setExplorerWanted] = useState(storedExplorer);
   const [infoWanted, setInfoWanted] = useState(false);
   const [helpOpen, setHelpOpen] = useState(false);
+  const [backupOpen, setBackupOpen] = useState(false);
   const [viewport, setViewport] = useState({ start: 0, end: 1 });
   const [explorerWidth, setExplorerWidth] = useState(208);
   const [infoWidth, setInfoWidth] = useState(280);
@@ -417,7 +420,7 @@ export default function App() {
     onDragOver={event => { if (event.dataTransfer.types.includes('Files')) event.preventDefault(); }}
     onDrop={event => { event.preventDefault(); void importFiles(event.dataTransfer.files); }}>
     <input ref={fileInput} type="file" accept=".fa,.fasta,.fna,.gb,.gbk,.genbank,.embl,.txt,.dna,.sg.json,.json" hidden data-testid="file-input" onChange={e => { if (e.target.files) void importFiles(e.target.files); }}/>
-    <header className="document-strip"><div className="brand"><button className="icon-button" aria-label="Show or hide explorer" aria-pressed={layout.explorer} onClick={toggleExplorer}><Icon name="panel"/></button><strong>Gin Schnaps</strong><span className="version">0.8.5</span></div>
+    <header className="document-strip"><div className="brand"><button className="icon-button" aria-label="Show or hide explorer" aria-pressed={layout.explorer} onClick={toggleExplorer}><Icon name="panel"/></button><strong>Gin Schnaps</strong><span className="version">0.8.6</span></div>
       <div className="document-tabs" role="tablist" aria-label="Open documents">{workspace.documents.map(doc => <div key={doc.key} className={`document-tab ${doc.key === workspace.active ? 'active' : ''}`}>
         <button role="tab" aria-selected={doc.key === workspace.active} title={doc.doc.name} aria-label={doc.doc.name} onClick={() => dispatch({ type: 'activate', key: doc.key })}><Icon name={doc.doc.topology === 'circular' ? 'circle' : 'linear'}/><span>{doc.doc.name}</span>{needsExport(doc) && <span className="dirty-dot" aria-label="Unexported changes">●</span>}</button>
         <button className="icon-button close-document" aria-label={`Close ${doc.doc.name}`} onClick={() => closeDocument(doc.key)}><Icon name="close" size={12}/></button>
@@ -494,8 +497,14 @@ export default function App() {
         </div>}
       </main>
     </div>
-    <footer className="status-bar" role="status"><span>{loading ? "Reading file…" : entry ? `${number(entry.doc.sequence.length)} bp · DNA ${entry.doc.topology === 'circular' ? "circular" : "linear"}` : "No document"}</span><span className="status-selection" data-testid="selection-status">{range ? `Selection ${number(range.start)} → ${number(range.end)} · ${number(entry!.selection!.length)} bp${range.end < range.start ? " · crosses origin" : ''}` : "No selection"}</span><span className="flex-spacer"/><button className="recovery-toggle" onClick={() => setRecoveryOpen(true)}>Recovery</button>{draftEntries.length > 0 && <span>{draftEntries.length} PCR draft(s) not saved</span>}<button className="recovery-toggle" onClick={() => setHelpOpen(true)}>Help</button></footer>
-    {helpOpen && <HelpDialog version="0.8.5" onClose={() => setHelpOpen(false)}/>}
+    <footer className="status-bar" role="status"><span>{loading ? "Reading file…" : entry ? `${number(entry.doc.sequence.length)} bp · DNA ${entry.doc.topology === 'circular' ? "circular" : "linear"}` : "No document"}</span><span className="status-selection" data-testid="selection-status">{range ? `Selection ${number(range.start)} → ${number(range.end)} · ${number(entry!.selection!.length)} bp${range.end < range.start ? " · crosses origin" : ''}` : "No selection"}</span><span className="flex-spacer"/><button className="recovery-toggle" disabled={nativeBusy || loading} onClick={() => { if (!document.querySelector('[role="dialog"]') && !importBusy.current) setBackupOpen(true); }}>Backups</button><button className="recovery-toggle" onClick={() => setRecoveryOpen(true)}>Recovery</button>{draftEntries.length > 0 && <span>{draftEntries.length} PCR draft(s) not saved</span>}<button className="recovery-toggle" onClick={() => setHelpOpen(true)}>Help</button></footer>
+    {backupOpen && <DocumentBackupDialog workspace={workspace} inputs={pcrInputs} version="0.8.6" onClose={() => setBackupOpen(false)} onRestore={backup => {
+      const restored = appendDocumentBackup(workspaceRef.current, pcrInputs, backup);
+      dispatch({ type: 'append-backup', expectedNextKey: workspaceRef.current.nextKey, workspace: restored.workspace });
+      setPcrInputs(restored.inputs); setBackupOpen(false); setPendingExport(null);
+      setMessage({text:'Backup restored as new unsaved tabs. Existing documents are unchanged.',error:false});
+    }}/>}
+    {helpOpen && <HelpDialog version="0.8.6" onClose={() => setHelpOpen(false)}/>}
     {pasteDialog && <PasteDialog doc={pasteDialog.doc} selection={pasteDialog.selection} initialText={pasteDialog.text} copied={copiedDNA} canCreate={workspace.documents.length < MAX_OPEN_DOCUMENTS} onClose={() => setPasteDialog(null)} onApply={applyPaste} onCreate={createPastedDocument}/>}
     {dialog && entry && <EditDialog key={`${dialog.key}-${dialog.mode}-${dialog.featureId ?? "new"}`} doc={entry.doc} selection={entry.selection} mode={dialog.mode} featureId={dialog.featureId} onClose={() => setDialog(null)} onApply={applyEdit}/>}
     <RecoveryPanel workspace={workspace} modalOpen={recoveryOpen} onClose={() => setRecoveryOpen(false)} restore={snapshot => {

@@ -8,6 +8,7 @@ use uuid::Uuid;
 
 pub type Result<T> = std::result::Result<T, String>;
 pub const DOCUMENT_LIMIT: usize = 4_000_000;
+pub const BACKUP_LIMIT: usize = 12_000_000;
 pub const EXPORT_LIMIT: usize = 16_000_000;
 pub const RECOVERY_LIMIT: usize = 12_000_000;
 pub fn hash(bytes: &[u8]) -> String { format!("{:x}", Sha256::digest(bytes)) }
@@ -170,7 +171,9 @@ impl FileStore {
         if ![".sg.json",".json",".dna",".gb",".gbk",".genbank",".embl",".txt",".fa",".fasta",".fna"].iter().any(|ext| name.to_lowercase().ends_with(ext)) {
             return Err("Unsupported file extension".into());
         }
-        let bytes = read_bounded(&path, DOCUMENT_LIMIT)?;
+        // Portable backup import is read-only and has its own bounded format.
+        let limit = if name.to_lowercase().ends_with(".gin-backup.json") { BACKUP_LIMIT } else { DOCUMENT_LIMIT };
+        let bytes = read_bounded(&path, limit)?;
         if self.protected_sources.len() >= 4096 && !self.protected_sources.contains(&path) { return Err("Session source-path limit reached. Save open work and restart.".into()); }
         self.protected_sources.insert(path.clone());
         let token = Uuid::new_v4().to_string();
