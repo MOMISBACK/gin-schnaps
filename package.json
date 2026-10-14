@@ -17,7 +17,7 @@
     "security:inventory": "node scripts/security-inventory.mjs",
     "test:security": "node --test tests/dependency-security.test.mjs",
     "test:consolidation": "python3 tests/consolidation.py",
-    "test:workbench": "python3 tests/workbench.py",
+    "test:workbench": "python3 tests/workbench.py && python3 tests/workspace-exports.py",
     "test:documents": "python3 tests/documents-primers.py && python3 tests/editor-review.py",
     "test:documents-oracle": "python3 tests/documents-oracle.py",
     "test:branding": "node --test tests/branding.test.mjs",

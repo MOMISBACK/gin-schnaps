@@ -1,7 +1,16 @@
 # Changelog
 
-## 0.8.4 — expert interface (preview)
+## 0.8.4 — paired workspace and expert interface (preview)
 
+- Add resizable Sequence/Map paired view with one shared selection and a subtle
+  independent workbench theme.
+- Add Ctrl/Cmd+A selection, Ctrl/Cmd+R cut alias, standard X, Z and redo controls.
+  Failed or delayed clipboard delivery cannot delete another revision/selection.
+- Cutting all bases creates an undoable, saveable empty working document.
+- Add current-document FASTA/plain-DNA/EMBL and oligo FASTA exports with explicit
+  loss reports, plus modern EMBL and plain-DNA imports.
+- Preserve schema 5 for ordinary files; schema 6 represents empty drafts and EMBL
+  archives. Older app versions cannot read schema-6 files.
 - Remove persistent tutorials and milestone labels from the workbench.
 - Keep action labels, units, state and input-specific warnings visible; place
   conventions in optional contextual help. Reports retain all engine messages.

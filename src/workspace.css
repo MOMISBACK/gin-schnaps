@@ -1,0 +1,29 @@
+
+/* Gin Schnaps workbench: quiet teal accents, underlined views, paired document panes. */
+:root { --accent:#166c68; --selection:#dcefeb; --workspace:#f3f5f5; }
+.view-header{height:auto;min-height:44px;flex:0 0 auto;padding:4px 12px;}
+.view-tabs{border:0;border-bottom:1px solid var(--divider);border-radius:0;background:transparent;overflow-x:auto;max-width:100%;height:36px;}
+.view-tabs button{height:35px;min-height:35px;padding:5px 10px;border:0;border-bottom:3px solid transparent;color:var(--muted);}
+.view-tabs button.active,.view-tabs button.active:hover{color:var(--accent);background:#e5eeec;border-bottom-color:var(--accent);}
+.command-bar{background:#f7f9f8;}
+.document-toolbar{flex-wrap:wrap;height:auto;min-height:48px;flex:0 0 auto;padding-top:6px;padding-bottom:6px;}
+.command-bar{flex-wrap:wrap;height:auto;min-height:34px;flex:0 0 auto;}
+.split-workspace{display:grid;flex:1;min-height:0;min-width:0;padding:0 8px 8px;overflow:hidden;}
+.split-pane{display:flex;flex-direction:column;min-width:0;min-height:0;border:1px solid var(--divider);background:var(--panel);overflow:hidden;}
+.split-heading{display:flex;align-items:center;gap:6px;min-height:34px;padding:3px 8px;background:#f7f9f8;border-bottom:1px solid var(--divider);flex-shrink:0;flex-wrap:wrap;}
+.split-heading strong{font-size:10px;letter-spacing:1px;margin-right:auto;color:var(--muted);}
+.split-heading button,.split-heading select{font-size:11px;height:24px;min-height:24px;}
+.split-divider{cursor:col-resize;touch-action:none;position:relative;}
+.split-divider:before{content:"";position:absolute;left:3px;top:42%;bottom:42%;width:2px;background:#a2b3b0;border-radius:2px;}
+.split-divider:hover,.split-divider:focus-visible{background:var(--selection);}
+.split-pane .sequence-container,.split-pane .map-viewport{margin:0;min-width:0;min-height:0;}
+.split-pane .sequence-settings{height:auto;min-height:34px;flex:0 0 auto;flex-wrap:wrap;gap:5px;padding:4px 8px;}
+.split-pane .sequence-settings label{font-size:10.5px;}
+.split-pane .sequence-viewport{margin:0;border:0;padding:0 8px;}
+.split-pane .map-controls{padding:4px 6px;flex-wrap:wrap;height:auto;min-height:34px;flex:0 0 auto;gap:4px;}
+.split-pane .map-controls button{font-size:10.5px;padding:2px 5px;}
+.split-pane .map-scroll{min-width:0;min-height:0;}
+.split-pane .minimap{padding:0 6px;}
+.export-format-row{display:flex;gap:16px;align-items:center;flex-wrap:wrap;margin-bottom:14px;}
+.export-format-row label{display:flex;gap:6px;align-items:center;}
+.export-format-row select{height:30px;min-width:170px;}

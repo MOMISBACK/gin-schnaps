@@ -3,11 +3,11 @@
 ## A first document
 
 Open the application. The initial plasmid is a **synthetic demonstration**, not a
-validated construction. Use **Open** for FASTA, GenBank, supported `.dna` files or
+validated construction. Use **Open** for FASTA, GenBank, modern EMBL, plain DNA, supported `.dna` files or
 `.sg.json`. Use **New** to paste DNA; choose its topology explicitly. Import reports
 explain normalization, preserved data and unsupported parts.
 
-Switch between **Map**, **Sequence**, **Features**, **Translation**, **Enzymes**,
+Switch between **Map**, **Sequence**, **Split**, **Features**, **Translation**, **Enzymes**,
 **Primers** and **History**. Map presentation can be linear without changing the
 actual molecular topology. A feature or base selection is shared between views.
 Positions shown to users are 1-based and inclusive; a circular selection whose
@@ -30,6 +30,8 @@ No modified `.dna` writer is provided.
 Desktop Save retains one predecessor copy per canonical destination in application
 data/backups. Generic exports do not keep that backup. These are not independent
 backups or a guarantee against power failure. Do not rely on only one copy.
+
+See [paired views, keyboard controls and export formats](WORKSPACE.md).
 
 ## Select, search and edit
 

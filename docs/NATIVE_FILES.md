@@ -109,3 +109,7 @@ are not proof of power-loss durability or universal disk-full handling.
 Human OS-picker and old-hardware acceptance remains separate:
 [acceptance checklist](INSTALLATION_CHECKLIST.md). Signing/notarization and the known
 Linux dependency warning remain open; this patch is not a desktop security clearance.
+
+Schema 6 also permits empty linear working documents without features, while schema
+5 remains accepted for ordinary documents. Current EMBL exports and preserved
+original EMBL records use the same bounded export service as other text files.

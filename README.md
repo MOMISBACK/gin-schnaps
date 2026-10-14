@@ -36,11 +36,12 @@ native compatibility with every older macOS version has not been established.
 
 ## What it does
 
-- Circular/linear maps, proportional sequence tracks, annotations and shared selections.
+- Circular/linear maps, sequence tracks and a resizable side-by-side workspace.
+- Select all, cut/copy/paste and undo/redo with document-aware keyboard controls.
 - Cross-document base-sequence copy/paste with preview, insertion/replacement and undo.
 - Guarded sequence/annotation editing, undo/redo, motif search, extraction,
   reverse complement, origin changes, and SVG/PNG map export.
-- FASTA, a documented GenBank subset, partial `.dna` import, and `.sg.json` documents.
+- FASTA/plain DNA, documented GenBank/EMBL subsets, partial `.dna` import, and `.sg.json` documents.
 - Six-frame/CDS translation with codes 1 and 11, 16 restriction enzymes,
   exact theoretical PCR, saved oligo libraries and one saved PCR setup per document.
 - Native Open/Save/Save As on desktop; opt-in local recovery. No account or sequence upload.

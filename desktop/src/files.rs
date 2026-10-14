@@ -143,7 +143,8 @@ pub fn check_document(bytes: &[u8]) -> Result<()> {
     if bytes.len() > DOCUMENT_LIMIT { return Err("Native documents are limited to 4 MB".into()); }
     let v: Value = serde_json::from_slice(bytes).map_err(|_| "Invalid document JSON")?;
     let seq = v["sequence"].as_str().ok_or("DNA sequence missing")?;
-    if v["schemaVersion"].as_u64() != Some(5) || seq.is_empty() || seq.len() > 100_000
+    if !matches!(v["schemaVersion"].as_u64(),Some(5 | 6)) || seq.len() > 100_000
+        || (seq.is_empty() && (v["schemaVersion"].as_u64()!=Some(6) || v["topology"]!="linear" || v["features"].as_array().is_none_or(|f| !f.is_empty())))
         || !seq.bytes().all(|b| b"ACGTRYSWKMBDHVN".contains(&b))
         || !matches!(v["topology"].as_str(), Some("linear" | "circular"))
         || v["features"].as_array().is_none_or(|f| f.len() > 1000)
@@ -166,7 +167,7 @@ impl FileStore {
         if self.grants.len() >= 128 { return Err("Too many file grants. Close documents or restart.".into()); }
         let path = checked_path(path)?;
         let name = path.file_name().unwrap().to_string_lossy().to_string();
-        if ![".sg.json",".json",".dna",".gb",".gbk",".genbank",".fa",".fasta",".fna"].iter().any(|ext| name.to_lowercase().ends_with(ext)) {
+        if ![".sg.json",".json",".dna",".gb",".gbk",".genbank",".embl",".txt",".fa",".fasta",".fna"].iter().any(|ext| name.to_lowercase().ends_with(ext)) {
             return Err("Unsupported file extension".into());
         }
         let bytes = read_bounded(&path, DOCUMENT_LIMIT)?;

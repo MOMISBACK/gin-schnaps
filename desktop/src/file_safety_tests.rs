@@ -178,3 +178,15 @@ fn invalid_unicode_path_is_refused_not_lossily_aliased() {
     assert!(checked_path(&path).unwrap_err().contains("valid Unicode"));
     assert_eq!(fs::read(&lossy).unwrap(),b"original at a different valid name");
 }
+
+#[test]
+fn empty_schema6_draft_saves_without_inventing_bases() {
+    let scratch=Scratch::new(); let mut store=FileStore::new(scratch.0.join("app")).unwrap();
+    let path=scratch.0.join("empty.sg.json");
+    let empty=json!({"schemaVersion":6,"name":"Empty draft","sequence":"","topology":"linear","features":[],"primers":[]}).to_string();
+    let grant=store.save_to(&path,&empty,None,None).unwrap();
+    assert_eq!(fs::read_to_string(&path).unwrap(),empty);
+    assert!(store.save(grant["token"].as_str().unwrap(),&empty.replace("linear","circular")).is_err());
+    assert!(store.save(grant["token"].as_str().unwrap(),&empty.replace("\"schemaVersion\":6","\"schemaVersion\":5")).is_err());
+    assert_eq!(fs::read_to_string(&path).unwrap(),empty);
+}

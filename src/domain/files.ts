@@ -1,9 +1,13 @@
+import { parseEMBL } from '../adapters/embl';
+import { parsePastedDNA } from './sequence-paste';
 import { parseDna } from '../adapters/dna';
 import { parseGenBank } from '../adapters/genbank';
 import { MAX_BASES, MAX_FILE_BYTES, MAX_OPEN_DOCUMENTS, type SequenceDocument, validateDocument } from './model';
 export function parseLocalFile(name: string, contents: string): { documents: SequenceDocument[]; warnings: string[] } {
   if (new TextEncoder().encode(contents).length > MAX_FILE_BYTES) throw new Error("File too large: limit 8 MB in this milestone.");
   const text = contents.replace(/^\uFEFF/, '');
+  if (/\.embl$/i.test(name)) return parseEMBL(name,text);
+  if (/\.txt$/i.test(name)) { const dna=parsePastedDNA(text); return {documents:[validateDocument({schemaVersion:1,id:'plain-dna',name:name.replace(/\.txt$/i,''),description:'Plain DNA import. Topology assigned linear.',sequence:dna.sequence,topology:'linear',features:[],provenance:'local-file'})],warnings:['Bases only; linear topology assigned.',...dna.notices]}; }
   if (/\.(gb|gbk|genbank)$/i.test(name)) return parseGenBank(name, text);
   if (/\.(sg\.json|json)$/i.test(name)) return { documents: [validateDocument(JSON.parse(text))], warnings: [] };
   if (!/\.(fasta|fa|fna)$/i.test(name)) throw new Error("Unsupported format: open FASTA, GenBank (.gb/.gbk) or Gin Schnaps (.sg.json). The .dna format must be read as a binary file.");

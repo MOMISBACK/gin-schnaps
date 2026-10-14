@@ -1,14 +1,15 @@
 # File formats and compatibility
 
-The native format is `.sg.json`, schema 4. Source archives are not current modified
+The native format is `.sg.json`: schema 5 for ordinary documents, schema 6 for
+empty working drafts and EMBL archives. Source archives are not current modified
 files. Every lossy conversion is disclosed; a successful import does not imply
 that all source semantics are supported.
 
 | Format/data | Active support | Not active / limitation |
 |---|---|---|
 | FASTA | DNA sequence/name, explicit normalization; multi-record | No topology/annotations inferred; linear default reported |
-| Native v1/v2/v3 | Migration to v4; prior supported fields preserved | Empty library/no PCR recipe added, no invented past primers |
-| Native v4 | Full scientific document, oligos/recipe, descriptors, source/archive/history | Session undo stacks and computed results are not serialized |
+| Native v1/v2/v3 | Migration to v5; prior supported fields preserved | Empty library/no PCR recipe added, no invented past primers |
+| Native v4/v5 | Full scientific document, oligos/recipe, descriptors, source/archive/history | Session undo stacks and computed results are not serialized |
 | GenBank exact locations | Simple, complement, homogeneous nonoverlapping joins, declared part order | Max 128 parts; DNA splicing of disjoint features blocked |
 | GenBank unresolved descriptors | `<`, `>`, remote accession.version, between-base, order, mixed/overlapping join; preserve and export | No fabricated projection, translation or sequence transformation |
 | Other GenBank constructs | Explicit refusal | No one-of/within-range/general INSDC completeness; explicit DNA/topology LOCUS required |
@@ -34,3 +35,10 @@ entries and a cumulative count. Older files are not silently shortened on import
 Schema 5 exports must not be opened for editing in an older application. The
 scientific document and source archives remain independently preserved. GenBank
 continues to omit internal history and the saved PCR library/setup, as reported.
+
+## Expanded file exchange (0.8.4)
+
+[Workspace and export guide](WORKSPACE.md) documents paired views, keyboard controls,
+GenBank, EMBL, FASTA, plain-DNA and oligo exports. Modern EMBL source records are
+archived as text under schema 6. Empty working drafts must be linear and contain no
+features; they can be saved natively but not exported as a fictitious molecule.

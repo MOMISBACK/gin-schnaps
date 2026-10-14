@@ -5,6 +5,7 @@ import { transformDocument, type DocumentCommand } from './document-operations';
 import { type Feature, type Qualifier, type Segment, type Selection, type SequenceDocument, featureSelection, MAX_BASES, selectionSegments, validateDocument } from './model';
 
 export type Command = DocumentCommand | PrimerCommand
+  | { kind: 'clear-sequence' }
   | { kind: 'splice'; start: number; deleteCount: number; insert: string }
   | { kind: 'feature'; feature: Feature }
   | { kind: 'remove-feature'; id: string }
@@ -52,6 +53,13 @@ export function executeCommand(doc: SequenceDocument, command: Command): Command
   if (command.kind==='oligo'||command.kind==='remove-oligo'||command.kind==='save-pcr'||command.kind==='clear-pcr') {
     const change=primerCommand(doc,command as PrimerCommand);
     return finish(doc,change.doc,command.kind,change.summary,change.warnings,null);
+  }
+  if (command.kind === 'clear-sequence') {
+    if (!doc.sequence.length) return {doc,selection:null,changed:0,removed:0,warnings:[]};
+    return finish(doc,{...doc,schemaVersion:6,sequence:'',topology:'linear',features:[],pcrRecipe:null},'cut',
+      `Cut all ${doc.sequence.length} bases.`,
+      ['Empty working document. Features and saved PCR setup removed; oligos retained. Undo restores the complete document.'],
+      null,0,doc.features.length);
   }
   if (command.kind === 'metadata' || command.kind === 'reverse-complement' || command.kind === 'rotate-origin') {
     const change = transformDocument(doc, command);

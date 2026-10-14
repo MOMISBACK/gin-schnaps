@@ -1,3 +1,5 @@
+import { SplitView } from './components/SplitView';
+import { editShortcut, prepareCut, cutStillCurrent } from './domain/editor-actions';
 import { MAX_PASTE_CHARACTERS } from './domain/sequence-paste';
 import { flushSync } from 'react-dom';
 import { PasteDialog, type CopiedDNA } from './components/PasteDialog';
@@ -37,6 +39,7 @@ import { Minimap } from './components/Minimap';
 import { useWindowWidth } from './components/hooks';
 const VIEWS: { id: View; label: string; icon: string }[] = [
   { id: 'map', label: "Map", icon: 'circle' }, { id: 'sequence', label: "Sequence", icon: 'sequence' },
+  { id: 'split', label: 'Split', icon: 'panel' },
   { id: 'translation', label: "Translation", icon: 'sequence' },
   { id: 'enzymes', label: 'Enzymes', icon: 'cut' }, { id: 'features', label: "Features", icon: 'feature' },
   { id: 'primers', label: "Primers", icon: 'primer' }, { id: 'history', label: "History", icon: 'history' }
@@ -88,7 +91,7 @@ function InfoPanel({ entry, close, editTopology }: { entry: OpenDocument; close:
       <h3>Description</h3><p className="description">{entry.doc.description || "No description."}</p>
       <h3>Selection</h3>{range ? <><p className="numeric">{number(range.start)} → {number(range.end)} · {number(entry.selection!.length)} bp</p>{selectedFeature && <p><span className="color-swatch" style={{ background: selectedFeature.color }}/>{selectedFeature.name}</p>}
         {range.end < range.start && <p className="origin-note">The selection crosses the origin.</p>}</> : <p className="muted">No region selected.</p>}
-      {entry.doc.sourceArchive && <><h3>Source {entry.doc.sourceArchive.format === 'genbank' ? 'GenBank' : '.dna'} original</h3><p>{entry.doc.sourceArchive.filename}</p><p className="origin-note">{entry.doc.sourceArchive.superseded ? "Archive predates the edits: this is not the current document." : "Original source preserved; not all metadata are interpreted."}</p><button className="small-button" onClick={() => downloadFile(entry.doc.sourceArchive!.format === 'genbank' ? "ORIGINAL_SOURCE.gb" : "ORIGINAL_SOURCE.dna", entry.doc.sourceArchive!.format === 'genbank' ? entry.doc.sourceArchive!.text : base64ToBytes(entry.doc.sourceArchive!.base64), 'application/octet-stream')}>Export original source</button>{entry.doc.sourceArchive.format === 'snapgene' && <details className="import-report" open><summary>.dna import report</summary>{entry.doc.sourceArchive.report.map((r, i) => <div key={i}><strong>{r.label} · {r.bytes} bytes</strong><span className={r.status === 'archived' ? 'archive-status' : 'import-status'}>{r.status === 'archived' ? "Archive only" : "Interpreted (see limitations)"}</span><p>{r.detail}</p></div>)}</details>}</>}
+      {entry.doc.sourceArchive && <><h3>Source {entry.doc.sourceArchive.format === 'genbank' ? 'GenBank' : entry.doc.sourceArchive.format === 'embl' ? 'EMBL' : '.dna'} original</h3><p>{entry.doc.sourceArchive.filename}</p><p className="origin-note">{entry.doc.sourceArchive.superseded ? "Archive predates the edits: this is not the current document." : "Original source preserved; not all metadata are interpreted."}</p><button className="small-button" onClick={() => downloadFile(entry.doc.sourceArchive!.format === 'genbank' ? "ORIGINAL_SOURCE.gb" : entry.doc.sourceArchive!.format === 'embl' ? "ORIGINAL_SOURCE.embl" : "ORIGINAL_SOURCE.dna", entry.doc.sourceArchive!.format !== 'snapgene' ? entry.doc.sourceArchive!.text : base64ToBytes(entry.doc.sourceArchive!.base64), 'application/octet-stream')}>Export original source</button>{entry.doc.sourceArchive.format === 'snapgene' && <details className="import-report" open><summary>.dna import report</summary>{entry.doc.sourceArchive.report.map((r, i) => <div key={i}><strong>{r.label} · {r.bytes} bytes</strong><span className={r.status === 'archived' ? 'archive-status' : 'import-status'}>{r.status === 'archived' ? "Archive only" : "Interpreted (see limitations)"}</span><p>{r.detail}</p></div>)}</details>}</>}
 
     </div>
   </aside>;
@@ -101,6 +104,7 @@ function downloadFile(name:string,content:string|Uint8Array,mime='application/js
 }
 export default function App() {
   const [workspace, dispatch] = useReducer(workspaceReducer, undefined, () => workspaceReducer(emptyWorkspace, { type: 'open', documents: [createDemo()], source: "Built-in synthetic example" }));
+  const cutBusy = useRef(false);
   const [copiedDNA, setCopiedDNA] = useState<CopiedDNA | null>(null);
   const [pasteDialog, setPasteDialog] = useState<{ key: number | null; doc?: SequenceDocument; selection: Selection; text: string } | null>(null);
   const [documentDialog, setDocumentDialog] = useState<DocumentMode | null>(null);
@@ -249,11 +253,13 @@ export default function App() {
     const action=(event:Event)=>{
       const name=(event as CustomEvent<string>).detail;
       if(name==='quit'){void requestQuit();return;}
+      if(name==='undo'||name==='redo'||name==='select-all'){editAction(name);return;}
       if(document.querySelector('[role="dialog"]')||importBusy.current)return;
       if(name==='open')void openFile();
       else if(name==='save')void saveDesktop();
       else if(name==='save-as')void saveDesktop(true);
       else if(name==='new')setDocumentDialog('new');
+
     };
     const error=(event:Event)=>notifyError((event as CustomEvent<string>).detail);
     window.addEventListener('gin-schnaps-native-action',action);window.addEventListener('gin-schnaps-export-error',error);
@@ -270,6 +276,40 @@ export default function App() {
     } catch {
       notifyError('System clipboard access was refused. The bases remain in session memory: switch documents, open Paste and choose Use last copied DNA.');
     }
+  };
+  const cutSelection = async () => {
+    if (cutBusy.current || importBusy.current || nativeBusy || document.querySelector('[role="dialog"]')) return;
+    const captured = workspaceRef.current.documents.find(d => d.key === workspaceRef.current.active);
+    if (!captured) return;
+    cutBusy.current = true;
+    try {
+      const prepared = prepareCut(captured.doc, captured.selection);
+      await writeClipboardText(prepared.text);
+      setCopiedDNA({sequence:prepared.text,sourceName:captured.doc.name});
+      const current = workspaceRef.current.documents.find(d => d.key === captured.key);
+      if (!current || workspaceRef.current.active !== captured.key || !cutStillCurrent(prepared,current.doc,current.selection,current.revision,captured.revision)) {
+        notifyError('Bases copied, but the document or selection changed. Nothing was cut.'); return;
+      }
+      dispatch({type:'commit',key:captured.key,doc:prepared.result.doc,selection:prepared.result.selection});
+      setPendingExport(null);
+      setMessage({text:`${number(prepared.text.length)} bp cut. `+prepared.result.warnings.join(' '),error:false});
+    } catch(error) { notifyError((error as Error).message); }
+    finally { cutBusy.current = false; }
+  };
+  const editAction = (action: 'select-all' | 'cut' | 'undo' | 'redo') => {
+    if (importBusy.current || nativeBusy) return;
+    const focused = document.activeElement;
+    if (isTextEntry(focused)) {
+      if (action === 'select-all' && (focused instanceof HTMLInputElement || focused instanceof HTMLTextAreaElement)) focused.select();
+      else if (action === 'undo' || action === 'redo') document.execCommand(action);
+      return;
+    }
+    if (document.querySelector('[role="dialog"]')) return;
+    if (action === 'cut') { void cutSelection(); return; }
+    if (action === 'select-all') {
+      const current=workspaceRef.current.documents.find(d=>d.key===workspaceRef.current.active);
+      if(current){window.getSelection()?.removeAllRanges();select(current.doc.sequence.length ? {start:0,length:current.doc.sequence.length} : null);}
+    } else dispatch({type:action});
   };
   const openPaste = (text = '') => {
     if (importBusy.current || nativeBusy || document.querySelector('[role="dialog"]')) return;
@@ -304,15 +344,27 @@ export default function App() {
       if (event.defaultPrevented || isTextEntry(event.target) || document.querySelector('[role="dialog"]') || importBusy.current || nativeBusy || !event.clipboardData) return;
       event.preventDefault(); openPaste(event.clipboardData.getData('text/plain'));
     };
-    window.addEventListener('copy', copy); window.addEventListener('paste', paste);
-    return () => { window.removeEventListener('copy', copy); window.removeEventListener('paste', paste); };
+    const cut = (event: ClipboardEvent) => {
+      if (event.defaultPrevented || isTextEntry(event.target) || hasSelectedText() || document.querySelector('[role="dialog"]') || !entry?.selection) return;
+      event.preventDefault(); void cutSelection();
+    };
+    window.addEventListener('copy', copy); window.addEventListener('paste', paste); window.addEventListener('cut',cut);
+    return () => { window.removeEventListener('copy', copy); window.removeEventListener('paste', paste); window.removeEventListener('cut',cut); };
   });
   useEffect(() => {
     const keydown = (event: KeyboardEvent) => {
-      if (documentDialog || dialog || pasteDialog || exportOpen || recoveryOpen || quitOpen || nativeBusy || draftCloseKey !== null || document.querySelector('[role="dialog"]')) { if ((event.metaKey || event.ctrlKey) && ['o','s','n','f'].includes(event.key.toLowerCase())) event.preventDefault(); return; }
+      if (documentDialog || dialog || pasteDialog || exportOpen || recoveryOpen || quitOpen || nativeBusy || draftCloseKey !== null || document.querySelector('[role="dialog"]')) { if ((event.metaKey || event.ctrlKey) && ['o','s','n','f','r'].includes(event.key.toLowerCase())) event.preventDefault(); return; }
       if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'f' && entry) { event.preventDefault(); setSearchOpen(true); }
       if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'n') { event.preventDefault(); setDocumentDialog('new'); }
       const editing = isTextEntry(event.target);
+      // Ctrl/Cmd R is an explicit DNA cut alias, never browser reload in this app.
+      const shortcut = editShortcut(event);
+      if (shortcut && !editing) {
+        event.preventDefault();
+        if (!event.repeat || shortcut === 'undo' || shortcut === 'redo') editAction(shortcut);
+        return;
+      }
+      if (editing && (event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'r') { event.preventDefault(); return; }
       if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'v' && !editing && !importBusy.current) {
         // Focus a real textarea before the browser performs its default paste.
         // No background clipboard read, permission request or synthetic paste.
@@ -322,9 +374,6 @@ export default function App() {
       if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'o') { event.preventDefault(); void openFile(); }
       if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 's') { event.preventDefault(); if(isDesktop())void saveDesktop(event.shiftKey);else exportDocument(); }
       if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'c' && !editing && !hasSelectedText() && entry?.selection) { event.preventDefault(); void copySelection(event.shiftKey); }
-      if ((event.metaKey || event.ctrlKey) && !editing && event.key.toLowerCase() === 'z') {
-        event.preventDefault(); dispatch({ type: event.shiftKey ? 'redo' : 'undo' });
-      }
       if (event.key === 'Escape') setMessage(null);
     };
     window.addEventListener('keydown', keydown); return () => window.removeEventListener('keydown', keydown);
@@ -359,7 +408,7 @@ export default function App() {
   return <div className="app" style={{ '--explorer-width': `${layout.explorer ? explorerWidth : 0}px`, '--info-width': `${layout.info ? infoWidth : 0}px` } as React.CSSProperties}
     onDragOver={event => { if (event.dataTransfer.types.includes('Files')) event.preventDefault(); }}
     onDrop={event => { event.preventDefault(); void importFiles(event.dataTransfer.files); }}>
-    <input ref={fileInput} type="file" accept=".fa,.fasta,.fna,.gb,.gbk,.genbank,.dna,.sg.json,.json" hidden data-testid="file-input" onChange={e => { if (e.target.files) void importFiles(e.target.files); }}/>
+    <input ref={fileInput} type="file" accept=".fa,.fasta,.fna,.gb,.gbk,.genbank,.embl,.txt,.dna,.sg.json,.json" hidden data-testid="file-input" onChange={e => { if (e.target.files) void importFiles(e.target.files); }}/>
     <header className="document-strip"><div className="brand"><button className="icon-button" aria-label="Show or hide explorer" aria-pressed={layout.explorer} onClick={toggleExplorer}><Icon name="panel"/></button><strong>Gin Schnaps</strong><span className="version">0.8.4</span></div>
       <div className="document-tabs" role="tablist" aria-label="Open documents">{workspace.documents.map(doc => <div key={doc.key} className={`document-tab ${doc.key === workspace.active ? 'active' : ''}`}>
         <button role="tab" aria-selected={doc.key === workspace.active} title={doc.doc.name} aria-label={doc.doc.name} onClick={() => dispatch({ type: 'activate', key: doc.key })}><Icon name={doc.doc.topology === 'circular' ? 'circle' : 'linear'}/><span>{doc.doc.name}</span>{needsExport(doc) && <span className="dirty-dot" aria-label="Unexported changes">●</span>}</button>
@@ -380,9 +429,9 @@ export default function App() {
         <div className="document-toolbar" role="toolbar" aria-label="Document tools">
           <Tool icon="folder" title="Open a file (⌘/Ctrl O)" disabled={loading} onClick={() => void openFile()}>Open</Tool>
           {isDesktop()&&<><button onClick={()=>void saveDesktop()} disabled={!entry||nativeBusy} title="Save native document (⌘/Ctrl S)">Save</button><button onClick={()=>void saveDesktop(true)} disabled={!entry||nativeBusy} title="Save native document as (⌘/Ctrl Shift S)">Save As…</button></>}
-          {!isDesktop()&&<Tool icon="save" title="Export native format (⌘/Ctrl S)" disabled={!entry} onClick={exportDocument}>Native</Tool>}<Tool icon="save" title="Export current document as GenBank" disabled={!entry} onClick={() => { setPendingExport(null); setMessage(null); setExportOpen(true); }}>GenBank</Tool><span className="tool-divider"/>
+          {!isDesktop()&&<Tool icon="save" title="Export native format (⌘/Ctrl S)" disabled={!entry} onClick={exportDocument}>Native</Tool>}<Tool icon="save" title="Export current document as GenBank" disabled={!entry} onClick={() => { setPendingExport(null); setMessage(null); setExportOpen(true); }}>Export…</Tool><span className="tool-divider"/>
           <Tool icon="undo" title="Undo (⌘/Ctrl Z)" disabled={!entry?.past.length} onClick={() => dispatch({ type: 'undo' })}/><Tool icon="redo" title="Redo (⌘/Ctrl ⇧ Z)" disabled={!entry?.future.length} onClick={() => dispatch({ type: 'redo' })}/><Tool icon="sequence" title="Edit bases" disabled={!entry} onClick={() => openEditor('bases')}>Edit</Tool>
-          <Tool icon="copy" title="Copy selection (⌘/Ctrl C)" disabled={!entry?.selection} onClick={() => void copySelection()}/><Tool icon="copy" title="Paste DNA (⌘/Ctrl V)" disabled={loading || nativeBusy} onClick={() => openPaste()}>Paste…</Tool><span className="tool-divider"/>
+          <Tool icon="cut" title="Cut selection (Ctrl R / ⌘ X)" disabled={!entry?.selection} onClick={() => void cutSelection()}/><Tool icon="copy" title="Copy selection (⌘/Ctrl C)" disabled={!entry?.selection} onClick={() => void copySelection()}/><Tool icon="copy" title="Paste DNA (⌘/Ctrl V)" disabled={loading || nativeBusy} onClick={() => openPaste()}>Paste…</Tool><span className="tool-divider"/>
           <Tool icon="cut" title="Open restriction analysis" disabled={!entry} onClick={() => dispatch({ type: 'view', view: 'enzymes' })}>Digestion</Tool><Tool icon="primer" title="Simulate PCR" disabled={!entry} onClick={() => dispatch({ type: 'view', view: 'primers' })}>PCR</Tool>
           <span className="flex-spacer"/>{entry && needsExport(entry) && <span className="readonly-badge">Modified</span>}<Tool icon="info" title="Document information" disabled={!entry} active={layout.info} onClick={() => setInfoWanted(!infoWanted)}/>
         </div>
@@ -408,22 +457,24 @@ export default function App() {
               <span className="flex-spacer"/>{entry.doc.provenance === 'synthetic-demo' && <span className="demo-badge">SYNTHETIC DATA</span>}</div>
             {explorerWanted && !layout.explorer && layout.info && <div className="compact-notice">Explorer temporarily hidden to preserve document width.</div>}
             <div id="active-view" className="active-view" role="tabpanel" aria-labelledby={`tab-${entry.view}`}>
-              {(entry.view === 'map' || entry.view === 'sequence') && <div className="display-rail" role="toolbar" aria-label="Display">
+              {!entry.doc.sequence.length && entry.view !== 'features' && entry.view !== 'history' && <EmptyView icon="sequence" title="Empty sequence"><button onClick={()=>openPaste()}>Paste DNA</button></EmptyView>}
+              {entry.doc.sequence.length > 0 && (entry.view === 'map' || entry.view === 'sequence') && <div className="display-rail" role="toolbar" aria-label="Display">
                 <Tool icon="circle" title="Circular presentation" disabled={entry.doc.topology !== 'circular'} active={entry.presentation === 'circular'} onClick={() => dispatch({ type: 'presentation', presentation: 'circular' })}/>
                 <Tool icon="linear" title="Linear presentation (does not change topology)" active={entry.presentation === 'linear'} onClick={() => dispatch({ type: 'presentation', presentation: 'linear' })}/>
                 <span className="rail-divider"/><Tool icon="feature" title="Show feature labels" active={labels} onClick={() => setLabels(!labels)}/>
                 <Tool icon="sequence" title="Show the complementary strand" active={reverse} disabled={entry.view !== 'sequence'} onClick={() => setReverse(!reverse)}/>
               </div>}
-              {entry.view === 'map' && <MapView entry={entry} onSelect={select} labels={labels}/>}
-              {entry.view === 'sequence' && <SequenceView key={entry.key} entry={entry} onSelect={select} reverse={reverse} labels={labels} onViewport={setViewport} onScroll={scrollTop => dispatch({ type: 'scroll', scrollTop })} onEditFeature={id => openEditor('feature', id)} onShowFeatures={() => dispatch({ type: 'view', view: 'features' })}/>}
+              {entry.doc.sequence.length > 0 && entry.view === 'map' && <MapView entry={entry} onSelect={select} labels={labels}/>}
+              {entry.doc.sequence.length > 0 && entry.view === 'sequence' && <SequenceView key={entry.key} entry={entry} onSelect={select} reverse={reverse} labels={labels} onViewport={setViewport} onScroll={scrollTop => dispatch({ type: 'scroll', scrollTop })} onEditFeature={id => openEditor('feature', id)} onShowFeatures={() => dispatch({ type: 'view', view: 'features' })}/>}
+              {entry.doc.sequence.length > 0 && entry.view === 'split' && <SplitView key={`split-${entry.key}`} entry={entry} labels={labels} reverse={reverse} onSelect={select} onScroll={scrollTop=>dispatch({type:'scroll',scrollTop})} onEditFeature={id=>openEditor('feature',id)} onShowFeatures={()=>dispatch({type:'view',view:'features'})} onPresentation={presentation=>dispatch({type:'presentation',presentation})} onLabels={()=>setLabels(!labels)} onReverse={()=>setReverse(!reverse)}/>}
               {entry.view === 'features' && <FeatureTable key={entry.key} entry={entry} select={select} toggle={id => dispatch({ type: 'visibility', id })} edit={id => openEditor('feature', id)}/>}
-              {entry.view === 'translation' && <TranslationPanel key={entry.key} entry={entry}/>}
-              {entry.view === 'enzymes' && <RestrictionPanel key={entry.key} entry={entry} onSelect={s => { select(s); dispatch({ type: 'view', view: 'map' }); }}/>}
-              {entry.view === 'primers' && <PcrPanel onCommit={result=>{dispatch({type:'commit',key:entry.key,doc:result.doc,selection:result.selection});setPendingExport(null);if(result.warnings.length)setMessage({text:result.warnings.join(' '),error:false});}} key={entry.key} entry={entry} input={pcrInputs[entry.key] ?? recipeOptions(entry.doc) ?? EMPTY_PCR} setInput={input => setPcrInputs(old => ({ ...old, [entry.key]: input }))} onSelect={s => { select(s); dispatch({ type: 'view', view: 'map' }); }}/>}
+              {entry.doc.sequence.length > 0 && entry.view === 'translation' && <TranslationPanel key={entry.key} entry={entry}/>}
+              {entry.doc.sequence.length > 0 && entry.view === 'enzymes' && <RestrictionPanel key={entry.key} entry={entry} onSelect={s => { select(s); dispatch({ type: 'view', view: 'map' }); }}/>}
+              {entry.doc.sequence.length > 0 && entry.view === 'primers' && <PcrPanel onCommit={result=>{dispatch({type:'commit',key:entry.key,doc:result.doc,selection:result.selection});setPendingExport(null);if(result.warnings.length)setMessage({text:result.warnings.join(' '),error:false});}} key={entry.key} entry={entry} input={pcrInputs[entry.key] ?? recipeOptions(entry.doc) ?? EMPTY_PCR} setInput={input => setPcrInputs(old => ({ ...old, [entry.key]: input }))} onSelect={s => { select(s); dispatch({ type: 'view', view: 'map' }); }}/>}
               {entry.view === 'history' && <div className="history-view"><h2>Document history</h2><div className="history-event"><Icon name="folder"/><div><strong>Document opened in this workspace</strong><p>{entry.source}</p><small>Software operations</small></div></div>{entry.doc.historyOmitted > 0 && <p className="analysis-warning" data-testid="history-retention">{entry.doc.historyOmitted} older operation description(s) are no longer retained in this document. Sequence, annotations, oligos and source archives are not removed. Older exports may retain earlier descriptions.</p>}{entry.doc.history.map((event, i) => <div className="history-event" key={i}><Icon name="history"/><div><strong>{entry.doc.historyOmitted + i + 1}. {event.summary}</strong>{event.warnings.map((w,j) => <p key={j}>{w}</p>)}</div></div>)}<HelpDetails label="History retention"><p>Up to 500 recent descriptions and 512 kB. Omitted entries are counted. This is not an experimental audit trail.</p><p>Session undo: {entry.past.length} · redo: {entry.future.length}</p></HelpDetails></div>}
             </div>
-            {entry.view === 'sequence' && <Minimap entry={entry} viewport={viewport} onNavigate={fraction => { const node = document.querySelector<HTMLElement>('.sequence-viewport'); if (node) node.scrollTop = fraction * (node.scrollHeight - node.clientHeight); }}/ >}
-            {(entry.view === 'map' || entry.view === 'sequence') && <SelectionBar key={`selection-${entry.key}`} doc={entry.doc} selection={entry.selection} onSelect={select} onError={notifyError}/>}
+            {entry.doc.sequence.length > 0 && entry.view === 'sequence' && <Minimap entry={entry} viewport={viewport} onNavigate={fraction => { const node = document.querySelector<HTMLElement>('.sequence-viewport'); if (node) node.scrollTop = fraction * (node.scrollHeight - node.clientHeight); }}/ >}
+            {entry.doc.sequence.length > 0 && (entry.view === 'map' || entry.view === 'sequence' || entry.view === 'split') && <SelectionBar key={`selection-${entry.key}`} doc={entry.doc} selection={entry.selection} onSelect={select} onError={notifyError}/>}
           </section>
           {layout.info && <div className="info-container">{separator('info')}<InfoPanel entry={entry} close={() => setInfoWanted(false)} editTopology={() => openEditor('topology')}/></div>}
         </div>}
@@ -440,12 +491,12 @@ export default function App() {
       bindings.current.clear();
       dispatch({ type: 'restore', documents: snapshot.documents, activeIndex: snapshot.activeIndex }); setRecoveryOpen(false); return true;
     }}/>
-    {exportOpen && entry && <ExportDialog doc={entry.doc} onClose={() => setExportOpen(false)} onExport={async(name, text) => {
+    {exportOpen && entry && <ExportDialog doc={entry.doc} selection={entry.selection} onClose={() => setExportOpen(false)} onExport={async(name, text) => {
       setExportOpen(false); setPendingExport(null);
       if(isDesktop())setNativeBusy(true);
       try{
         const written=await exportBlob(name,new Blob([text],{type:'text/plain;charset=utf-8'}));
-        setMessage({text:written ? "GenBank export completed or requested in the browser. Keep the native .sg.json for the complete document." : "GenBank export cancelled. No file was written.",error:false});
+        setMessage({text:written ? `Export ${name} completed or requested in the browser. Keep .sg.json for the complete document.` : "Export cancelled. No file was written.",error:false});
       }catch(e){notifyError((e as Error).message);}
       finally{setNativeBusy(false);}
     }}/>}
