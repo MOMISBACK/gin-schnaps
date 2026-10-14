@@ -38,7 +38,7 @@ fn paths(app:&tauri::AppHandle, save:bool, name:&str)->Result<Option<PathBuf>>{
     }
     let dialog=app.dialog().file();
     let picked=if save{dialog.set_file_name(name).blocking_save_file()}
-        else{dialog.add_filter("Sequence documents",&["json","dna","gb","gbk","genbank","fa","fasta","fna"]).blocking_pick_file()};
+        else{dialog.add_filter("Sequence documents",&["json","dna","gb","gbk","genbank","embl","txt","fa","fasta","fna"]).blocking_pick_file()};
     picked.map(|p|p.into_path().map_err(|e|e.to_string())).transpose()
 }
 fn confirm_replace(app:&tauri::AppHandle,path:&std::path::Path,native_document:bool)->bool{
@@ -77,7 +77,7 @@ async fn desktop_save(app:tauri::AppHandle,state:tauri::State<'_,Host>,token:Opt
 async fn desktop_export(app:tauri::AppHandle,state:tauri::State<'_,Host>,name:String,base64:String)->Result<Option<Value>>{
     let _busy=begin(&state)?;
     let extension=name.rsplit('.').next().ok_or("Missing export extension")?.to_lowercase();
-    if name.len()>160||name.contains(['/', '\\'])||!["json","gb","fasta","fa","dna","svg","png","txt"].contains(&extension.as_str())||name.to_lowercase().ends_with(".sg.json"){
+    if name.len()>160||name.contains(['/', '\\'])||!["json","gb","embl","fasta","fa","dna","svg","png","txt"].contains(&extension.as_str())||name.to_lowercase().ends_with(".sg.json"){
         return Err("Unsupported export name/format. Native documents use Save As.".into());
     }
     if base64.len()>files::EXPORT_LIMIT*4/3+4{return Err("Export exceeds 16 MB".into());}
@@ -158,7 +158,10 @@ fn menu(app:&tauri::App)->tauri::Result<()>{
     let save_as=MenuItem::with_id(app,"save-as","Save As…",true,None::<&str>)?;
     let file=Submenu::with_items(app,"File",true,&[&new,&open,&save,&save_as])?;
     let copy=PredefinedMenuItem::copy(app,None)?;let cut=PredefinedMenuItem::cut(app,None)?;let paste=PredefinedMenuItem::paste(app,None)?;
-    let edit=Submenu::with_items(app,"Edit",true,&[&cut,&copy,&paste])?;
+    let undo=MenuItem::with_id(app,"undo","Undo",true,None::<&str>)?;
+    let redo=MenuItem::with_id(app,"redo","Redo",true,None::<&str>)?;
+    let all=MenuItem::with_id(app,"select-all","Select All",true,None::<&str>)?;
+    let edit=Submenu::with_items(app,"Edit",true,&[&undo,&redo,&cut,&copy,&paste,&all])?;
     app.set_menu(Menu::with_items(app,&[&about,&file,&edit])?)?;Ok(())
 }
 fn main(){

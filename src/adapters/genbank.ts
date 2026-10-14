@@ -23,7 +23,7 @@ function qualifier(raw: string): Qualifier {
   }
   return validateQualifiers([{ key: match[1], value }])[0];
 }
-function inspectFeatures(lines: string[], size: number, circular: boolean): Feature[] {
+export function inspectFeatures(lines: string[], size: number, circular: boolean): Feature[] {
   const start = lines.findIndex(line => /^FEATURES\s/.test(line));
   if (start === -1) return [];
   const end = lines.findIndex((line, i) => i > start && /^ORIGIN\b/.test(line));

@@ -1,5 +1,5 @@
 import { type SequenceDocument, type Selection, MAX_OPEN_DOCUMENTS } from './model';
-export type View = 'map' | 'sequence' | 'enzymes' | 'features' | 'primers' | 'history' | 'translation';
+export type View = 'map' | 'sequence' | 'split' | 'enzymes' | 'features' | 'primers' | 'history' | 'translation';
 export type Snapshot = { doc: SequenceDocument; selection: Selection };
 export type OpenDocument = {
   key: number; revision: number; doc: SequenceDocument; view: View; selection: Selection;

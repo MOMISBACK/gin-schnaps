@@ -40,6 +40,7 @@ function qualifier(q: Qualifier): string[] {
  */
 export function exportGenBank(input: SequenceDocument, date = new Date()): GenBankExport {
   const doc = validateDocument(input);
+  if (!doc.sequence.length) throw new Error("The document has no sequence. Save .sg.json, or paste DNA before interchange export.");
   if (!Number.isFinite(date.getTime())) throw new Error("Invalid export date.");
   const name = doc.name.replace(/[^A-Za-z0-9_.-]/g, '_').slice(0, 16) || 'sequence';
   const dateText = `${String(date.getUTCDate()).padStart(2, '0')}-${['JAN','FEB','MAR','APR','MAY','JUN','JUL','AUG','SEP','OCT','NOV','DEC'][date.getUTCMonth()]}-${date.getUTCFullYear()}`;
