@@ -37,7 +37,8 @@ native compatibility with every older macOS version has not been established.
 ## What it does
 
 - Circular/linear maps, sequence tracks and a resizable side-by-side workspace.
-- Select all, cut/copy/paste and undo/redo with document-aware keyboard controls.
+- Pointer-centered map zoom, middle/Space/hand-tool pan and Fit.
+- Select all, cut/copy/paste and explicit direct DNA typing with undo/redo.
 - Cross-document base-sequence copy/paste with preview, insertion/replacement and undo.
 - Guarded sequence/annotation editing, undo/redo, motif search, extraction,
   reverse complement, origin changes, and SVG/PNG map export.
@@ -47,12 +48,12 @@ native compatibility with every older macOS version has not been established.
 - Create a document from a selected PCR product, with feature-transfer preview and saved provenance.
 - Native Open/Save/Save As on desktop; opt-in local recovery. No account or sequence upload.
 
-[File compatibility](docs/FILE_FORMATS.md) · [Scientific scope](docs/SCIENCE.md) · [PCR product documents](docs/PCR_PRODUCTS.md)
+[Editing and mouse controls](docs/EDITING.md) · [File compatibility](docs/FILE_FORMATS.md) · [Scientific scope](docs/SCIENCE.md) · [PCR product documents](docs/PCR_PRODUCTS.md)
 
 ## Important limits
 
-Primer3/Tm, automatic primer design, Sanger chromatograms, assembly, direct typing
-into nucleotide rows, automatic updates and file associations are not implemented.
+Primer3/Tm, automatic primer design, Sanger chromatograms, assembly,
+automatic updates and file associations are not implemented.
 Complex annotations have explicit editing restrictions. A simulated product is
 not evidence that an experiment will succeed.
 

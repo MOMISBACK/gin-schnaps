@@ -82,3 +82,20 @@
 .pcr-creation-record{background:#fff;border:1px solid var(--divider);border-radius:4px;padding:12px;margin:16px 0;max-width:850px}.pcr-creation-record h3{font-size:13px;margin-bottom:6px}.pcr-creation-record p{margin:6px 0}.pcr-creation-record details{margin-top:8px}.pcr-creation-record summary{cursor:pointer}.pcr-transfer-report{max-height:200px;overflow:auto;overflow-wrap:anywhere}.hash-value{overflow-wrap:anywhere;font-size:11px}
 
 .backup-dialog{max-width:720px}.backup-document-list{max-height:180px;overflow:auto;overflow-wrap:anywhere}.backup-dialog hr{border:0;border-top:1px solid var(--divider);margin:16px 0}.backup-dialog .dialog-body>p{margin-bottom:10px}
+
+/* Camera transforms only presentation; the SVG keeps stable scientific coordinates. */
+.map-navigation{position:relative;overflow:hidden;overscroll-behavior:contain;touch-action:none;outline-offset:-2px}
+.map-navigation .map-render{position:absolute;left:0;top:0;margin:0;transform-origin:0 0}
+.map-navigation.pan-ready,.map-navigation.pan-ready *{cursor:grab!important}
+.map-navigation.is-panning,.map-navigation.is-panning *{cursor:grabbing!important;user-select:none}
+.map-hand-active{background:var(--selection)!important;color:var(--accent)!important}
+.map-controls{flex-wrap:wrap;height:auto;min-height:30px;flex-shrink:0;row-gap:4px;padding-top:3px;padding-bottom:3px}
+.dna-typing-active{background:#fff0d4!important;border-color:#aa6500!important;color:#603a00!important}
+.typing-position{font-size:10px;color:#603a00;white-space:nowrap}
+.reference-line,.empty-typing-line{position:relative}
+.dna-caret{position:absolute;top:0;height:20px;border-left:2px solid var(--accent);pointer-events:none}
+.empty-typing-line{display:flex;align-items:center;gap:16px;min-height:32px;padding-top:8px}
+.empty-typing-line .dna-caret{top:8px}
+.sequence-container[data-edit-mode="typing"] .sequence-viewport{box-shadow:inset 0 2px 0 #aa6500}
+
+.empty-typing-document{display:flex;align-items:center;gap:12px;padding:12px 0 0;font-size:12px}

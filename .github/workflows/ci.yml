@@ -83,6 +83,8 @@ jobs:
         run: npm run test:pcr-documents
       - name: Portable document backups and PCR draft restoration
         run: npm run test:backups
+      - name: Mouse navigation and guarded direct DNA editing
+        run: npm run test:interactive-editing
       - name: Emitted-source dependency inventory
         run: npm run security:inventory
       - name: Known-advisory gate (not a security certification)

@@ -7,15 +7,15 @@ import { Icon } from './Icon';
 import { HelpDetails } from './HelpDetails';
 
 export type CopiedDNA = { sequence: string; sourceName: string };
-export function PasteDialog({ doc, selection, initialText, copied, canCreate, onClose, onApply, onCreate }: {
-  doc?: SequenceDocument; selection: Selection; initialText: string; copied: CopiedDNA | null; canCreate: boolean;
+export function PasteDialog({ doc, selection, initialText, copied, canCreate, onClose, onApply, onCreate, caret }: {
+  caret?: number; doc?: SequenceDocument; selection: Selection; initialText: string; copied: CopiedDNA | null; canCreate: boolean;
   onClose: () => void; onApply: (result: CommandResult) => void; onCreate: (doc: SequenceDocument) => void;
 }) {
   const range = doc ? toUserRange(selection, doc.sequence.length) : null;
   const [mode, setMode] = useState<'insert' | 'replace' | 'new'>(!doc ? 'new' : selection ? 'replace' : 'insert');
   const [text, setText] = useState(initialText.length <= MAX_PASTE_CHARACTERS ? initialText : '');
   const [inputError, setInputError] = useState(initialText.length > MAX_PASTE_CHARACTERS ? 'Clipboard text exceeds 400,000 characters.' : '');
-  const [start, setStart] = useState(String(range?.start ?? 1));
+  const [start, setStart] = useState(String(range?.start ?? (caret !== undefined ? caret + 1 : 1)));
   const [end, setEnd] = useState(String(range?.end ?? 1));
   const [reverse, setReverse] = useState(false);
   const [name, setName] = useState('Pasted sequence');

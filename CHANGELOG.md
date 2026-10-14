@@ -1,5 +1,18 @@
 # Changelog
 
+## 0.8.7 — mouse map navigation and direct DNA editing (preview)
+
+- Zoom maps at the mouse pointer (25–800%); pan by middle drag, Space + left
+  drag or the hand tool. Fit/0 recenters. Navigation does not edit the molecule.
+- Enable Type DNA explicitly for reference-strand insert/replace and Backspace/
+  Delete, with visible interbase caret and one-step undo per keystroke. Text fields
+  retain normal typing. Empty drafts remain editable; unresolved locations are guarded.
+- Allow safe splices through exact, nonoverlapping joined features. Preserve part
+  order and boundaries, omit deleted parts, never fill gaps, and archive stale qualifiers.
+- Add base-identity and pointer-anchor reference tests, real browser mouse/keyboard
+  workflows and system-WebView save/undo regressions. Scientific engine/schema unchanged.
+- See [editing and map controls](docs/EDITING.md). Existing preview/security limits remain.
+
 ## 0.8.6 — portable document backups (preview)
 
 - Export all open native documents, oligos, creation records and separate PCR

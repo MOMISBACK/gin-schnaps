@@ -7,6 +7,7 @@ clipboard and automated native-write resilience. 0.8.4 added synchronized Map /
 Sequence, editing shortcuts, and exchange-format exports. 0.8.5 adds explicit
 PCR-to-document creation with saved inputs, exact annotation projection and review.
 0.8.6 adds explicit portable document/draft backups and non-destructive restore.
+0.8.7 adds mouse-centered map zoom/pan and direct DNA typing through safe joined-feature edits.
 These are development previews, not laboratory-validated releases.
 
 ## Essential next work
@@ -14,8 +15,8 @@ These are development previews, not laboratory-validated releases.
 1. Finish real installation acceptance on the old Intel Mac and actual OS file
    pickers, resolve the Linux GLib warning, and organize signing/notarization.
    Follow the [installation checklist](INSTALLATION_CHECKLIST.md).
-2. Extend safe sequence editing for exact disjoint features, then direct nucleotide
-   typing through the same commands; refine dense maps and everyday file navigation.
+2. Refine dense-map label placement and file navigation. Extend exact joined-feature
+   extraction and only add uncertain-location transformations with defined semantics.
 3. Evaluate existing oligos with an independently verified Primer3 integration
    before automated design. Do not invent Tm, specificity or experimental success.
 4. Run a small user beta on authorized nonconfidential files; then Sanger
