@@ -44,10 +44,6 @@ jobs:
           python3 -m pip install playwright==1.58.0 biopython==1.86
           python3 -m playwright install --with-deps chromium
           npm run test:backups
-      - name: Keep review artifacts
-        if: always()
-        run: |
-          test ! -d node_modules/events || tar -czf /tmp/events-sources.tar.gz -C node_modules events
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         if: always()
         with:
@@ -57,7 +53,6 @@ jobs:
             dist/index.html
             dist/diagnostic.html
             dist/BUILD-METRICS.json
-            /tmp/events-sources.tar.gz
           retention-days: 7
   record:
     needs: prepare
@@ -69,7 +64,7 @@ jobs:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
         with:
           ref: feat/0.8.6-document-backups
-      - name: Record only the inspected source tree
+      - name: Record inspected application sources without modifying workflows
         env:
           EXPECTED_HEAD: ${{ github.sha }}
         run: |
@@ -85,7 +80,7 @@ jobs:
           git apply --index --unidiff-zero /tmp/backups.patch
           git rm -r .backup-transfer .github/workflows/prepare-backups.yml
           test "$(git write-tree)" = 'd632acb098886149ba2cd85d1a9199db33633b6f'
-          git restore --source=HEAD --staged --worktree .github/workflows/prepare-backups.yml
+          git restore --source=HEAD --staged --worktree .github/workflows/prepare-backups.yml .github/workflows/ci.yml
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
           git commit -m 'feat: add portable document backups and explicit PCR draft restoration'
