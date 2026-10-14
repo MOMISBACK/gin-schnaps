@@ -41,19 +41,18 @@ on ambiguous IUPAC bases is not the same as a certain match. **Copy RC** copies 
 reverse complement without changing the molecule.
 
 Sequence insertion, replacement and deletion use controlled dialogs with an
-impact preview; free typing in nucleotide rows is not implemented. Review affected
+impact preview. Opt-in **Type DNA** also edits the reference strand in place using the same commands; see [editing controls](EDITING_NAVIGATION.md). Review affected
 features before applying an edit. Undo/redo are per document and session-only.
 Translations or coordinate-dependent claims made stale by editing are archived and
 marked for review, not silently presented as valid recalculations.
 
 **Properties**, **Duplicate**, **Extract…**, **Reverse complement…** and **Set origin…**
 provide common document operations. Extracting a partial feature reports truncation.
-A disjoint `join(...)` retains its actual parts, not the gaps between them. Unsupported
-splices on such annotations are refused. Unresolved locations are retained as
+A disjoint `join(...)` retains its actual parts, not the gaps between them. Exact parts can be spliced independently; an insertion inherits only a part whose interior contains the complete edit. Gaps are not filled. Unresolved locations are retained as
 metadata without invented exact coordinates; they restrict sequence transformations.
 
 The Sequence view has proportional feature tracks and optional frame translation.
-The Map view provides zoom/fit and SVG/PNG export. Dense labels may still overlap.
+The Map view provides pointer-centered wheel zoom, Space + drag or middle-button panning, a Pan mode, Fit and SVG/PNG export. Camera changes never alter the sequence. Dense labels may still overlap.
 
 ## Oligos and PCR
 
@@ -143,12 +142,10 @@ Existing destination annotations use the same adjustment/review rules as Edit.
 Plain DNA and one FASTA record are accepted. Whitespace and lowercase are normalized
 with a notice. Multiple FASTA records, digits, gaps, non-DNA characters and excess
 length are rejected, never silently stripped or truncated. The limit remains
-100,000 bases in the result. Pasting into documents with disjoint or unresolved
-features remains blocked when the shared edit engine cannot safely update them.
+100,000 bases in the result. Exact disjoint features retain their declared parts through paste. Unresolved locations remain blocked until their edit semantics are defined.
 An explicit **Reverse-complement pasted DNA** option changes the pasted bases only.
 
-Normal text fields keep their ordinary Copy/Paste behavior. Direct free typing
-into the displayed nucleotide rows and cross-document Cut are not implemented.
+Normal text fields keep their ordinary Copy/Paste behavior. **Type DNA** enables direct reference-strand typing; **Esc** disables it. Cut/Copy/Paste continue to use the document-aware clipboard commands.
 
 ## Compact interface
 

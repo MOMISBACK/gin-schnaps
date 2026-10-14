@@ -109,9 +109,11 @@ with sync_playwright() as p:
             button('Part 2: 61..80').click();expect(page.get_by_test_id('selection-status')).to_contain_text('20 bp')
             tab('Sequence');expect(page.locator('.sequence-feature').first).to_be_visible() if page.locator('.sequence-feature').count() else None
             page.screenshot(path=str(OUT/'step7-joined-sequence.png'))
-            before=native();button('Edit bases').click();page.get_by_label('Edit start',exact=True).fill('1');page.get_by_label('Edit end',exact=True).fill('1');page.get_by_label('DNA to insert',exact=True).fill('A')
-            expect(page.get_by_role('dialog')).to_contain_text('blocked');expect(button('Apply')).to_be_disabled();button('Cancel').click();assert native()==before
-            passed('Disjoint features select only real parts; undefined base-edit semantics are blocked before mutation')
+            before=native();button('Edit bases').click();page.get_by_label('Base operation',exact=True).select_option('insert');page.get_by_label('Edit start',exact=True).fill('1');page.get_by_label('DNA to insert',exact=True).fill('A')
+            expect(button('Apply')).to_be_enabled();button('Apply').click();page.keyboard.press('Escape');
+            edited=native();assert edited['features'][2]['segments']==[{'start':41,'end':51},{'start':61,'end':81}]
+            button('Undo (⌘/Ctrl Z)').click();page.keyboard.press('Escape');assert native()==before
+            passed('Exact disjoint features remain separate through insertion; Undo restores the complete document')
             exported=genbank();assert 'join(41..50,61..80)' in exported
             (OUT/'joined-current.gb').write_text(exported);(OUT/'joined-current.json').write_text(json.dumps(before))
             upload('roundjoin.gb',exported.encode());reread=native();assert [x['segments'] for x in reread['features']]==[x['segments'] for x in before['features']]

@@ -1,5 +1,21 @@
 # Changelog
 
+## 0.8.7 — mouse navigation and direct DNA editing (preview)
+
+- Cursor-anchored wheel zoom (25–800%), Space/hand/middle-button panning, keyboard
+  navigation and Fit, with separate session-only cameras per document/presentation.
+- Keep SVG geometry stable while navigating; selection, sequence, topology and
+  exports never acquire camera coordinates.
+- Edit exact disjoint features part by part, preserving declared order and excluding
+  gaps/boundary insertions. Unresolved descriptors still block DNA splicing.
+- Opt-in Type DNA uses the existing guarded commands, validation and undo. It edits
+  the reference strand at an interbase caret; multi-base replacements ask first.
+- Empty working documents accept typing. Escape and external revisions disarm
+  typing; text inputs, composition and application shortcuts keep their own scope.
+- No new dependencies, schema version or scientific analysis algorithm. Existing
+  native signing, Linux security and old-hardware limitations remain.
+- See [editing and map navigation](docs/EDITING_NAVIGATION.md).
+
 ## 0.8.6 — portable document backups (preview)
 
 - Export all open native documents, oligos, creation records and separate PCR

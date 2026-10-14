@@ -24,7 +24,7 @@ Cutting the entire molecule leaves an **empty working document**, not an invente
 N base. Its topology becomes linear; its features and saved PCR setup are cleared;
 the saved oligo reagents and original source archive remain. Undo restores the
 complete prior document. Paste DNA to continue or save the empty draft as .sg.json.
-Nonempty cuts retain the existing restrictions on disjoint/unresolved features.
+Nonempty cuts update exact disjoint parts independently; unresolved descriptors remain guarded.
 Clipboard transfer carries bases only, not source annotations or oligos.
 
 ## Sequence and Map together

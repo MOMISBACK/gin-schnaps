@@ -1,13 +1,16 @@
+import type { MapCamera } from '../view/map-camera';
 import { type SequenceDocument, type Selection, MAX_OPEN_DOCUMENTS } from './model';
 export type View = 'map' | 'sequence' | 'split' | 'enzymes' | 'features' | 'primers' | 'history' | 'translation';
 export type Snapshot = { doc: SequenceDocument; selection: Selection };
 export type OpenDocument = {
+  mapCameras?: Partial<Record<'circular'|'linear',MapCamera>>;
   key: number; revision: number; doc: SequenceDocument; view: View; selection: Selection;
   presentation: 'circular' | 'linear'; hiddenFeatures: string[]; scrollTop: number;
   source: string; past: Snapshot[]; future: Snapshot[]; exportedDoc: SequenceDocument | null;
 };
 export type Workspace = { documents: OpenDocument[]; active: number | null; nextKey: number };
 export type WorkspaceAction =
+  | { type:'map-camera'; key:number; presentation:'circular'|'linear'; camera:MapCamera }
   | { type: 'append-backup'; expectedNextKey: number; workspace: Workspace }
   | { type: 'restore'; documents: { doc: SequenceDocument; source: string }[]; activeIndex: number }
   | { type: 'open'; documents: SequenceDocument[]; source: string; dirty?: boolean }
@@ -48,9 +51,10 @@ export function workspaceReducer(state: Workspace, action: WorkspaceAction): Wor
     return { ...state, documents, active: state.active === action.key ? documents[Math.min(index, documents.length - 1)]?.key ?? null : state.active };
   }
   return { ...state, documents: state.documents.map(entry => {
-    const target = action.type === 'commit' || action.type === 'checkpoint' ? action.key : state.active;
+    const target = action.type === 'commit' || action.type === 'checkpoint' || action.type === 'map-camera' ? action.key : state.active;
     if (entry.key !== target) return entry;
     switch (action.type) {
+      case 'map-camera': return {...entry,mapCameras:{...entry.mapCameras,[action.presentation]:action.camera}};
       case 'commit': {
         if (entry.doc === action.doc) return { ...entry, selection: action.selection };
         return { ...entry, revision: entry.revision + 1, doc: action.doc, selection: action.selection, scrollTop: 0,

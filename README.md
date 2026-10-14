@@ -37,6 +37,7 @@ native compatibility with every older macOS version has not been established.
 ## What it does
 
 - Circular/linear maps, sequence tracks and a resizable side-by-side workspace.
+- Mouse zoom/pan with independent map cameras, plus opt-in direct DNA typing.
 - Select all, cut/copy/paste and undo/redo with document-aware keyboard controls.
 - Cross-document base-sequence copy/paste with preview, insertion/replacement and undo.
 - Guarded sequence/annotation editing, undo/redo, motif search, extraction,
@@ -51,8 +52,8 @@ native compatibility with every older macOS version has not been established.
 
 ## Important limits
 
-Primer3/Tm, automatic primer design, Sanger chromatograms, assembly, direct typing
-into nucleotide rows, automatic updates and file associations are not implemented.
+Primer3/Tm, automatic primer design, Sanger chromatograms, assembly,
+automatic updates and file associations are not implemented.
 Complex annotations have explicit editing restrictions. A simulated product is
 not evidence that an experiment will succeed.
 

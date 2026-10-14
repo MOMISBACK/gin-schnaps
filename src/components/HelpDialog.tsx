@@ -27,7 +27,7 @@ export function HelpDialog({ version, onClose }: { version: string; onClose: () 
         <p>Gin Schnaps {version} · development preview</p>
         <HelpDetails label="Editing & shortcuts">
           <p>Use ⌘ on macOS, Ctrl elsewhere: A selects all bases, C copies, X or R cuts, V opens Paste, Z undoes, Shift+Z or Y redoes. O opens; S saves.</p>
-          <p>Coordinates are 1-based and inclusive. Start &gt; end crosses a circular origin. Double-click a feature to edit it. Base editing uses the Edit bases dialog.</p>
+          <p>Coordinates are 1-based and inclusive. Start &gt; end crosses a circular origin. Double-click a feature to edit it. Edit bases previews changes; Type DNA enables reference-strand typing. Esc finishes typing. Wheel zooms the map under the pointer; Space + drag, middle button or Pan moves it. Fit resets the camera.</p>
           <p>Shortcuts act on the active document; text fields keep text editing. R is reserved for DNA cut, not reload. Cutting all bases creates an empty working document; native Save and Undo remain available.</p>
           <p>Split shows Sequence and Map side by side. Drag the divider; double-click or press Enter to reset it.</p>
           <p>Paste transfers bases only. Replace removes the selected region; Insert keeps it. Review changed or removed features in the preview.</p>

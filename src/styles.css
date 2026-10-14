@@ -82,3 +82,19 @@
 .pcr-creation-record{background:#fff;border:1px solid var(--divider);border-radius:4px;padding:12px;margin:16px 0;max-width:850px}.pcr-creation-record h3{font-size:13px;margin-bottom:6px}.pcr-creation-record p{margin:6px 0}.pcr-creation-record details{margin-top:8px}.pcr-creation-record summary{cursor:pointer}.pcr-transfer-report{max-height:200px;overflow:auto;overflow-wrap:anywhere}.hash-value{overflow-wrap:anywhere;font-size:11px}
 
 .backup-dialog{max-width:720px}.backup-document-list{max-height:180px;overflow:auto;overflow-wrap:anywhere}.backup-dialog hr{border:0;border-top:1px solid var(--divider);margin:16px 0}.backup-dialog .dialog-body>p{margin-bottom:10px}
+
+/* Camera transforms do not resize the SVG or alter annotation coordinates. */
+.map-camera-stage{position:relative;overflow:hidden;flex:1;min-width:0;min-height:0;touch-action:none;overscroll-behavior:contain;user-select:none}
+.map-camera-stage .map-render{position:absolute;left:50%;top:50%;transform-origin:0 0;flex:none;margin:0;max-width:none}
+.map-camera-stage.pan-ready,.map-camera-stage.pan-ready *{cursor:grab!important}
+.map-camera-stage.is-panning,.map-camera-stage.is-panning *{cursor:grabbing!important}
+.map-controls{flex-wrap:wrap;min-height:34px;height:auto;flex-shrink:0;gap:4px}
+.map-controls button[aria-pressed=true]{background:var(--selection);color:var(--accent)}
+.map-controls select{max-width:74px}
+
+.typing-status,.typing-notice{padding:3px 10px;font-size:11px;line-height:16px;flex:none;max-height:52px;overflow:auto}
+.typing-status{background:var(--selection);color:var(--text)}
+.typing-notice{background:var(--toolbar);color:var(--text)}
+.base.typing-caret{box-shadow:inset 2px 0 var(--accent)}
+.base.typing-caret-end{border-right:2px solid var(--accent)}
+.sequence-settings button[aria-pressed=true]{background:var(--selection);border-color:var(--accent)}

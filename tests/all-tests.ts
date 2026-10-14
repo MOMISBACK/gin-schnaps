@@ -26,3 +26,7 @@ import './workspace-export.test';
 import './pcr-document.test';
 
 import './document-backup.test';
+
+import './map-camera.test';
+import './disjoint-editing.test';
+import './direct-typing.test';

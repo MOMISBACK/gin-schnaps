@@ -1,3 +1,4 @@
+import { spliceParts } from './splice-parts';
 import { appendHistory } from './history';
 import { serializeDocument } from './model';
 import { primerCommand, type PrimerCommand } from './primer-commands';
@@ -91,7 +92,7 @@ export function executeCommand(doc: SequenceDocument, command: Command): Command
       throw new Error("Linearization refused: a feature crosses the origin. Edit its definition first.");
     return finish(doc, { ...doc, topology: command.topology }, 'topology', `Declared topology: ${command.topology === 'circular' ? "circular" : "linear"}.`, ["The document topology, not just its presentation, was changed."], null);
   }
-  if(doc.features.some(f=>!featureSelection(f,doc)))throw new Error('DNA splicing is blocked while disjoint or unresolved features are present. Their exact edit semantics are not implemented; resolve or explicitly remove those features first.');
+  if(doc.features.some(f=>f.unresolved))throw new Error('DNA splicing is blocked while unresolved features are present. Resolve or explicitly remove their uncertain locations first.');
   const { start, deleteCount, insert } = command, n = doc.sequence.length;
   if (!Number.isInteger(start) || start < 0 || start > n || !Number.isInteger(deleteCount) || deleteCount < 0 || deleteCount > n || (start === n && deleteCount > 0))
     throw new Error("Operation outside the sequence bounds.");
@@ -118,7 +119,7 @@ export function executeCommand(doc: SequenceDocument, command: Command): Command
     // Boundary insertions are excluded. Inserted DNA inherits an annotation only
     // when the whole replacement is strictly inside that annotation.
     const includeInsert = insert.length > 0 && distance > 0 && distance + deleteCount < flength;
-    const touched = feature.segments.some(s => removedSpans.some(d => intersection(s, d))) || includeInsert;
+    let touched = feature.segments.some(s => removedSpans.some(d => intersection(s, d))) || includeInsert;
     const spans: Segment[] = [];
     let anchor: number | null = null;
     for (const s of feature.segments) for (const mapping of mappings) {
@@ -130,7 +131,10 @@ export function executeCommand(doc: SequenceDocument, command: Command): Command
       }
     }
     if (includeInsert) spans.push({ start: insertionPosition, end: insertionPosition + insert.length });
-    const segments = canonical(spans, newN, anchor);
+    const continuous = featureSelection(feature, doc) !== null;
+    const projection = continuous ? null : spliceParts(feature.segments, start, deleteCount, insert.length, n);
+    const segments = projection ? projection.segments : canonical(spans, newN, anchor);
+    if (projection) touched = projection.touched;
     if (!segments.length) { removed++; continue; }
     const positionsChanged = !same(segments, feature.segments);
     let next: Feature = { ...feature, segments };
@@ -149,6 +153,7 @@ export function executeCommand(doc: SequenceDocument, command: Command): Command
   if (removed) warnings.push(`${removed} feature(s) fully deleted; recoverable with Undo during this session.`);
   if (changed) warnings.push(`${changed} feature(s) adjusted: check their biological interpretation.`);
   if (archived) warnings.push(`${archived} potentially obsolete qualifier(s) archived, without recalculating translation.`);
+  if (doc.features.some(f=>!featureSelection(f,doc))) warnings.push('Joined parts retain their declared order; inserted DNA inherits only a part containing the entire edit strictly inside its boundaries. Gaps are not filled.');
   if (insert.length && deleteCount) warnings.push("Replacement DNA inherits a feature only if the replacement lies strictly inside it.");
   return finish(doc, { ...doc, sequence, features }, 'splice', `${deleteCount} base(s) deleted, ${insert.length} inserted, starting at position ${start + 1}.`, warnings,
     insert.length ? { start: insertionPosition, length: insert.length } : null, changed, removed);
