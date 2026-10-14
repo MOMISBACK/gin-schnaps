@@ -17,7 +17,7 @@ jobs:
       - name: Validate base, transfer and target tree without executing code
         run: |
           test "$(git ls-tree -r --name-only HEAD .workspace-transfer/workspace.patch.xz)" = .workspace-transfer/workspace.patch.xz
-          echo '2b4acc4ab84b6e8ccb4350d6b9133ebce4eadff7d49689e40f183bbe6afadedf  .workspace-transfer/workspace.patch.xz' | sha256sum -c -
+          echo 'c3e7775dacfc7b9b0e479e2d149a5e8f11b4fb38aa53c2cf5825ff0d0ccdff53  .workspace-transfer/workspace.patch.xz' | sha256sum -c -
           xz -d -c .workspace-transfer/workspace.patch.xz > /tmp/workspace.patch
           git apply --index --check /tmp/workspace.patch
           git apply --index /tmp/workspace.patch
@@ -39,7 +39,7 @@ jobs:
         run: |
           test "$(git rev-parse HEAD)" = "$EXPECTED_HEAD"
           test "$(git ls-tree -r --name-only HEAD .workspace-transfer/workspace.patch.xz)" = .workspace-transfer/workspace.patch.xz
-          echo '2b4acc4ab84b6e8ccb4350d6b9133ebce4eadff7d49689e40f183bbe6afadedf  .workspace-transfer/workspace.patch.xz' | sha256sum -c -
+          echo 'c3e7775dacfc7b9b0e479e2d149a5e8f11b4fb38aa53c2cf5825ff0d0ccdff53  .workspace-transfer/workspace.patch.xz' | sha256sum -c -
           xz -d -c .workspace-transfer/workspace.patch.xz > /tmp/workspace.patch
           git apply --index --check /tmp/workspace.patch
           git apply --index /tmp/workspace.patch
