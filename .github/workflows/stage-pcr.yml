@@ -1,0 +1,71 @@
+name: Verify PCR document source
+on:
+  push:
+    branches: [feat/0.8.5-pcr-documents]
+    paths: ['.stage-pcr/**', '.github/workflows/stage-pcr.yml']
+permissions:
+  contents: read
+jobs:
+  verify:
+    if: contains(github.event.head_commit.message, 'stage PCR documents')
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    env:
+      PYTHONUTF8: '1'
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: '22'
+      - name: Apply only the exact reviewed source tree
+        run: |
+          cat .stage-pcr/part{0,1,2}.xz > /tmp/pcr.patch.xz
+          echo '688dc8a2ea222358a1227588e7c4fc608265f10531d6561b65b6d572173fc05d  /tmp/pcr.patch.xz' | sha256sum -c -
+          python3 -c "import pathlib,lzma; b=lzma.decompress(pathlib.Path('/tmp/pcr.patch.xz').read_bytes()); assert len(b)==100169; pathlib.Path('/tmp/pcr.patch').write_bytes(b)"
+          git apply --index --unidiff-zero /tmp/pcr.patch
+          git rm -r .stage-pcr .github/workflows/stage-pcr.yml
+          test "$(git write-tree)" = '8660a5f98cb039537f9501f69a3b4b40088e4387'
+      - name: Locked dependencies and scientific unit checks
+        run: |
+          npm ci --ignore-scripts --no-fund --no-audit
+          npm run check
+      - name: Real browser tooling
+        run: |
+          python3 -m pip install playwright==1.58.0 biopython==1.86
+          python3 -m playwright install --with-deps chromium
+      - name: Actual file launch, creation and independent reader
+        run: npm run test:pcr-documents
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with:
+          name: pcr-source-validation
+          path: test-results/
+          retention-days: 7
+  record:
+    needs: verify
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          ref: feat/0.8.5-pcr-documents
+      - name: Record verified sources without executing them
+        env:
+          EXPECTED_HEAD: ${{ github.sha }}
+        run: |
+          test "$(git rev-parse HEAD)" = "$EXPECTED_HEAD"
+          cat .stage-pcr/part{0,1,2}.xz > /tmp/pcr.patch.xz
+          echo '688dc8a2ea222358a1227588e7c4fc608265f10531d6561b65b6d572173fc05d  /tmp/pcr.patch.xz' | sha256sum -c -
+          python3 -c "import pathlib,lzma; b=lzma.decompress(pathlib.Path('/tmp/pcr.patch.xz').read_bytes()); assert len(b)==100169; pathlib.Path('/tmp/pcr.patch').write_bytes(b)"
+          git apply --index --unidiff-zero /tmp/pcr.patch
+          git rm -r .stage-pcr .github/workflows/stage-pcr.yml
+          test "$(git write-tree)" = '8660a5f98cb039537f9501f69a3b4b40088e4387'
+          git restore --source=HEAD --staged --worktree .github/workflows/stage-pcr.yml
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git commit -m 'feat: create independent PCR product documents with bounded provenance and reviewed feature transfer'
+          git push origin HEAD:feat/0.8.5-pcr-documents
