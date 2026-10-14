@@ -156,3 +156,9 @@ The interface shows parameters and results by default. Use **Help** for shortcut
 saving, privacy and licenses; expand **PCR limits**, **CDS conventions**, or
 **Model details** for calculation conventions. Input-specific warnings and data-loss
 confirmations remain visible. User names, notes and imported history are not rewritten.
+
+## Create a PCR product document
+
+Use **Create…** on a simulated product row, review its feature transfer, then
+**Create document**. Save the new document to retain its inputs and provenance.
+The source stays open and unchanged. Full instructions: [PCR product documents](PCR_PRODUCTS.md).

@@ -27,7 +27,7 @@ with zipfile.ZipFile(ROOT/(name+'-browser.zip'),'w',zipfile.ZIP_DEFLATED) as z:
         data=(ROOT/'dist'/filename).read_bytes();manifest['sha256'][filename]=hashlib.sha256(data).hexdigest();z.writestr(name+'/'+filename,data)
     z.writestr(name+'/START_HERE.txt',start)
     for filename in ['LICENSE','THIRD_PARTY_NOTICES.md']:z.write(ROOT/filename,name+'/'+filename)
-    for original,public in [('synthetic-step4.dna','example-plasmid.dna'),('synthetic-120.gb','example-small.gb'),('analysis-demo.sg.json','analysis-demo.sg.json'),('joined-demo.gb','joined-features.gb'),('primer-library-demo.sg.json','primer-library.sg.json')]:
+    for original,public in [('synthetic-step4.dna','example-plasmid.dna'),('synthetic-120.gb','example-small.gb'),('analysis-demo.sg.json','analysis-demo.sg.json'),('joined-demo.gb','joined-features.gb'),('primer-library-demo.sg.json','primer-library.sg.json'),('pcr-product-demo.sg.json','pcr-product-demo.sg.json')]:
         z.write(ROOT/'tests/fixtures'/original,name+'/examples/'+public)
     z.writestr(name+'/BUILD.json',json.dumps(manifest,indent=2)+'\n')
 with zipfile.ZipFile(ROOT/(name+'-sources.zip'),'w',zipfile.ZIP_DEFLATED) as z:

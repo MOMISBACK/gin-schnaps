@@ -56,7 +56,7 @@ export function executeCommand(doc: SequenceDocument, command: Command): Command
   }
   if (command.kind === 'clear-sequence') {
     if (!doc.sequence.length) return {doc,selection:null,changed:0,removed:0,warnings:[]};
-    return finish(doc,{...doc,schemaVersion:6,sequence:'',topology:'linear',features:[],pcrRecipe:null},'cut',
+    return finish(doc,{...doc,schemaVersion:doc.schemaVersion === 7 ? 7 : 6,sequence:'',topology:'linear',features:[],pcrRecipe:null},'cut',
       `Cut all ${doc.sequence.length} bases.`,
       ['Empty working document. Features and saved PCR setup removed; oligos retained. Undo restores the complete document.'],
       null,0,doc.features.length);

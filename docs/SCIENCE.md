@@ -102,7 +102,7 @@ and optional recovery. Temporary form edits, session undo and calculated product
 do not persist automatically. Closing warns for unsaved PCR drafts; save their setup
 explicitly before saving the file. Changing an oligo sequence invalidates a dependent
 setup. Exported JSON reports include inputs, parameters, template and results;
-product FASTA contains sequence without unvalidated parental annotation transfer.
+product FASTA contains sequence only. Creating a product document explicitly maps exact parental annotations and reports clipping/omission; see [PCR products](PCR_PRODUCTS.md).
 
 ## Formats and evidence
 
