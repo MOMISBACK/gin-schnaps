@@ -27,3 +27,22 @@
 .export-format-row{display:flex;gap:16px;align-items:center;flex-wrap:wrap;margin-bottom:14px;}
 .export-format-row label{display:flex;gap:6px;align-items:center;}
 .export-format-row select{height:30px;min-width:170px;}
+
+/* Annotation workflows keep object selection separate from nucleotide selection. */
+.command-bar { flex-wrap: wrap; height: auto; min-height: 34px; }
+.feature-selection-state { display: flex; align-items: center; gap: 10px; padding: 4px 12px; color: var(--muted); font-size: 11px; border-bottom: 1px solid var(--divider); }
+.feature-selection-state button { font-size: 11px; }
+.segment-editor { padding: 10px; border: 1px solid var(--divider); margin: 8px 0; }
+.segment-row { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin: 6px 0; }
+.segment-row input { width: 88px; }
+.segment-row button { font-size: 11px; }
+.cds-fields { padding: 10px; border: 1px solid var(--divider); margin: 10px 0; }
+.cds-fields summary { font-weight: 600; margin-bottom: 8px; cursor: pointer; }
+.cds-fields .dna-input { overflow-wrap: anywhere; white-space: pre-wrap; max-height: 100px; overflow-y: auto; }
+.annotation-dialog .dialog-body { overflow-wrap: anywhere; }
+.table-toolbar { height: auto; min-height: 40px; flex-wrap: wrap; }
+
+.segment-editor h3 { font-size: 12.5px; line-height: 18px; margin-bottom: 4px; }
+.annotation-context-shield { position: fixed; inset: 0; z-index: 80; }
+.annotation-context-menu { position: fixed; display: flex; flex-direction: column; gap: 2px; padding: 5px; min-width: 200px; background: white; border: 1px solid var(--divider); border-radius: 4px; box-shadow: 0 2px 8px #0002; }
+.annotation-context-menu button { border: 0; text-align: left; justify-content: flex-start; }

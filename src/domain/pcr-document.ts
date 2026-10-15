@@ -1,3 +1,4 @@
+import { projectFeatures } from './feature-projection';
 import { type AnalysisRequest, type AnalysisResponse, sameStamp } from '../core/protocol';
 import { type PcrOptions, type PcrProduct } from '../core/pcr';
 import { type Feature, type SequenceDocument, MAX_FEATURES, selectionSegments, serializeDocument, validateDocument } from './model';
@@ -5,38 +6,13 @@ import { newDocumentId } from './document-operations';
 import { sha256, validatePcrProduct, validatePcrOptions, type FeatureTransfer, type PcrCreation } from './pcr-provenance';
 
 export type PcrDocumentOptions = { name: string; transferFeatures: boolean; annotatePrimers: boolean; id?: string };
-const POSITION_KEYS = new Set(['transl_except', 'anticodon', 'rpt_unit_range']);
-const CONTENT_KEYS = new Set(['translation', 'codon_start', 'protein_id', 'inference']);
-
 export function previewPcrDocument(source: SequenceDocument, input: PcrOptions, candidate: PcrProduct, transferFeatures: boolean, annotatePrimers: boolean) {
   const options = validatePcrOptions(input), product = validatePcrProduct(candidate, source, options);
   const tailLength = options.primers[product.forward.primer].tail.length;
-  const selected = selectionSegments({ start: product.start, length: product.templateLength }, source.sequence.length);
-  let offset = tailLength;
-  const projection = selected.map(s => { const part = { ...s, offset }; offset += s.end - s.start; return part; });
-  const features: Feature[] = [], report: FeatureTransfer[] = [];
-  for (const [index, feature] of source.features.entries()) {
-    const item = { sourceId: feature.id, name: feature.name };
-    if (!transferFeatures) { report.push({ ...item, status: 'excluded', targetId: null }); continue; }
-    if (feature.unresolved) { report.push({ ...item, status: 'unresolved', targetId: null }); continue; }
-    // Preserve each part's declared order, not the order of its new numeric coordinate.
-    // A wrapped product may therefore contain an exact, non-monotonic join.
-    const segments = feature.segments.flatMap(s => projection.map(p => ({ start: Math.max(s.start, p.start), end: Math.min(s.end, p.end), projection: p }))
-      .filter(p => p.end > p.start).sort((a, b) => a.start - b.start)
-      .map(p => ({ start: p.start - p.projection.start + p.projection.offset, end: p.end - p.projection.start + p.projection.offset })));
-    if (!segments.length) { report.push({ ...item, status: 'outside', targetId: null }); continue; }
-    const retained = segments.reduce((n, s) => n + s.end - s.start, 0), original = feature.segments.reduce((n, s) => n + s.end - s.start, 0);
-    const clipped = retained !== original;
-    const moved = JSON.stringify(feature.segments) !== JSON.stringify(segments);
-    const invalid = (key: string) => (moved && POSITION_KEYS.has(key)) || (clipped && (POSITION_KEYS.has(key) || CONTENT_KEYS.has(key)));
-    const archived = feature.qualifiers.filter(q => invalid(q.key));
-    const id = `pcr-parent-${index + 1}`;
-    features.push({ ...feature, id, segments,
-      qualifiers: feature.qualifiers.filter(q => !invalid(q.key)),
-      archivedQualifiers: [...feature.archivedQualifiers, ...archived.map(q => ({ ...q, reason: clipped ? 'Feature clipped in a theoretical PCR product; dependent value not recalculated.' : 'Feature projected into a PCR product; coordinate-dependent value not rewritten.' }))],
-      reviewRequired: feature.reviewRequired || clipped || archived.length > 0 });
-    report.push({ ...item, status: clipped ? 'clipped' : 'transferred', targetId: id });
-  }
+  const projected = projectFeatures(source, { start: product.start, length: product.templateLength }, {
+    include: transferFeatures, offset: tailLength, targetId: (_feature, index) => `pcr-parent-${index + 1}`
+  });
+  const features = projected.features, report: FeatureTransfer[] = projected.report;
   if (annotatePrimers) {
     for (const [direction, site] of [[1, product.forward], [-1, product.reverse]] as const) {
       const primer = options.primers[site.primer], length = primer.tail.length + primer.annealing.length;

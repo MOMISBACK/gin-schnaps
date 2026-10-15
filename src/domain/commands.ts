@@ -1,3 +1,4 @@
+import { invalidateFeature as invalidate, reconcileFeatureEdit } from './feature-policy';
 import { projectCompoundSplice } from './compound-splice';
 import { appendHistory } from './history';
 import { serializeDocument } from './model';
@@ -8,22 +9,12 @@ import { type Feature, type Qualifier, type Segment, type Selection, type Sequen
 export type Command = DocumentCommand | PrimerCommand
   | { kind: 'clear-sequence' }
   | { kind: 'splice'; start: number; deleteCount: number; insert: string }
-  | { kind: 'feature'; feature: Feature }
+  | { kind: 'feature'; feature: Feature; explicitQualifierKeys?: string[] }
+  | { kind: 'feature-batch'; ids: string[]; operation: 'remove' | 'duplicate' | 'review' | 'colour' | 'type'; value?: string; newIds?: string[] }
   | { kind: 'remove-feature'; id: string }
   | { kind: 'topology'; topology: SequenceDocument['topology'] };
 export type CommandResult = { doc: SequenceDocument; selection: Selection; changed: number; removed: number; warnings: string[] };
-const POSITION_QUALIFIERS = new Set(['transl_except', 'anticodon', 'rpt_unit_range']);
-const CONTENT_QUALIFIERS = new Set(['translation', 'codon_start', 'protein_id', 'inference']);
 const same = (a: unknown, b: unknown) => JSON.stringify(a) === JSON.stringify(b);
-
-/** Keep imported claims, but never present known-stale values as current results. */
-function invalidate(feature: Feature, contentChanged: boolean, positionsChanged: boolean): Feature {
-  const invalid = (q: Qualifier) => (contentChanged && CONTENT_QUALIFIERS.has(q.key)) || ((positionsChanged || contentChanged) && POSITION_QUALIFIERS.has(q.key));
-  return { ...feature, reviewRequired: true,
-    qualifiers: feature.qualifiers.filter(q => !invalid(q)),
-    archivedQualifiers: [...feature.archivedQualifiers, ...feature.qualifiers.filter(invalid).map(q => ({ ...q,
-      reason: POSITION_QUALIFIERS.has(q.key) ? "Coordinates changed; qualifier not recalculated." : "Sequence or feature definition changed; value not recalculated." }))] };
-}
 function intersection(a: Segment, b: Segment): Segment | null {
   const start = Math.max(a.start, b.start), end = Math.min(a.end, b.end);
   return end > start ? { start, end } : null;
@@ -68,18 +59,28 @@ export function executeCommand(doc: SequenceDocument, command: Command): Command
   }
   if (command.kind === 'feature') {
     const old = doc.features.find(f => f.id === command.feature.id);
-    let feature = command.feature;
-    const structural = !!old && (old.strand !== feature.strand || old.type !== feature.type || !same(old.segments, feature.segments) || !same(old.unresolved, feature.unresolved));
-    const context = (f: Feature) => f.qualifiers.filter(q => ['codon_start', 'transl_table', 'transl_except'].includes(q.key));
-    const contextChanged = !!old && !same(context(old), context(feature));
-    if (structural) feature = invalidate(feature, true, true);
-    else if (contextChanged) feature = { ...feature, reviewRequired: true,
-      qualifiers: feature.qualifiers.filter(q => q.key !== 'translation'),
-      archivedQualifiers: [...feature.archivedQualifiers, ...feature.qualifiers.filter(q => q.key === 'translation').map(q => ({ ...q, reason: "Translation parameters changed; translation not recalculated." }))] };
-
+    const feature = reconcileFeatureEdit(old, command.feature, command.explicitQualifierKeys);
+    const revised = !same(feature, command.feature);
     const features = old ? doc.features.map(f => f.id === feature.id ? feature : f) : [...doc.features, feature];
-    const warnings = structural || contextChanged ? ["Feature definition changed: dependent qualifiers were archived and must be reviewed."] : [];
+    const warnings = revised ? ["Feature definition changed: inherited dependent qualifiers were archived. Explicitly redefined values remain active as user declarations; review is still required."] : [];
     return finish(doc, { ...doc, features }, 'feature', `${old ? 'Modification' : "Creation"} of feature “${feature.name}”.`, warnings, null, 1);
+  }
+  if (command.kind === 'feature-batch') {
+    if (!command.ids.length || new Set(command.ids).size !== command.ids.length || command.ids.some(id => !doc.features.some(f => f.id === id))) throw new Error('Select existing, distinct features.');
+    const chosen = new Set(command.ids);
+    if (command.operation === 'duplicate' && (command.newIds?.length !== command.ids.length || new Set(command.newIds).size !== command.ids.length || command.newIds.some(id => doc.features.some(f => f.id === id)))) throw new Error('Duplicated features need new, distinct identifiers.');
+    let features = doc.features;
+    if (command.operation === 'remove') features = features.filter(f => !chosen.has(f.id));
+    else if (command.operation === 'duplicate') features = [...features, ...command.ids.map((id, i) => {
+      const f = doc.features.find(f => f.id === id)!;
+      return { ...f, id: command.newIds![i], name: `${f.name.slice(0, 490)} copy` };
+    })];
+    else features = features.map(f => !chosen.has(f.id) ? f : command.operation === 'review' ? { ...f, reviewRequired: false }
+      : command.operation === 'colour' ? { ...f, color: command.value! }
+      : reconcileFeatureEdit(f, { ...f, type: command.value! }));
+    return finish(doc, { ...doc, features }, 'feature-batch', `${command.operation}: ${command.ids.length} selected feature(s).`,
+      [command.operation === 'review' ? 'Manual review acknowledgement only; no experimental or computational validation is implied.' : 'DNA is unchanged. The selected feature operation is one undoable transaction.'], null,
+      command.operation === 'remove' ? 0 : command.ids.length, command.operation === 'remove' ? command.ids.length : 0);
   }
   if (command.kind === 'remove-feature') {
     const f = doc.features.find(f => f.id === command.id);
@@ -87,8 +88,9 @@ export function executeCommand(doc: SequenceDocument, command: Command): Command
     return finish(doc, { ...doc, features: doc.features.filter(f => f.id !== command.id) }, 'remove-feature', `Deletion of feature “${f.name}”.`, ["The DNA sequence is unchanged."], null, 0, 1);
   }
   if (command.kind === 'topology') {
+    if (command.topology === doc.topology) return { doc, selection: null, changed: 0, removed: 0, warnings: [] };
     if(doc.features.some(f=>f.unresolved))throw new Error('Topology changes are blocked while unresolved location descriptors are present.');
-    if (command.topology === 'linear' && doc.features.some(f => f.segments.length > 1))
+    if (command.topology === 'linear' && doc.features.some(f => !!featureSelection(f, doc) && f.segments.length > 1))
       throw new Error("Linearization refused: a feature crosses the origin. Edit its definition first.");
     return finish(doc, { ...doc, topology: command.topology }, 'topology', `Declared topology: ${command.topology === 'circular' ? "circular" : "linear"}.`, ["The document topology, not just its presentation, was changed."], null);
   }
@@ -170,3 +172,5 @@ export function executeCommand(doc: SequenceDocument, command: Command): Command
   return finish(doc, { ...doc, sequence, features }, 'splice', `${deleteCount} base(s) deleted, ${insert.length} inserted, starting at position ${start + 1}.`, warnings,
     insert.length ? { start: insertionPosition, length: insert.length } : null, changed, removed);
 }
+
+export { finish as finishCommand };

@@ -8,6 +8,7 @@ Sequence, editing shortcuts, and exchange-format exports. 0.8.5 adds explicit
 PCR-to-document creation with saved inputs, exact annotation projection and review.
 0.8.6 adds explicit portable document/draft backups and non-destructive restore.
 0.8.7 adds mouse-centered map zoom/pan and direct DNA typing through safe joined-feature edits.
+0.8.8 unifies exact annotation transfer, fixes CDS declarations and adds annotated clipboard operations.
 These are development previews, not laboratory-validated releases.
 
 ## Essential next work

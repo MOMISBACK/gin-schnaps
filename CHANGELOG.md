@@ -1,5 +1,17 @@
 # Changelog
 
+## 0.8.8 — annotation workflows and clipboard (preview)
+
+- Preserve explicitly redefined CDS values during structural edits; archive inherited values.
+- Share exact-part projection between extraction, PCR and clipboard; fix join/topology guards.
+- Add object multiselection, batch metadata/duplicate/delete/review, segment rows and CDS fields.
+- Copy DNA with features or selected features; preview insert/replace/new/reverse/coordinate-only paste.
+- Keep IDs unique, make each paste one undoable transaction, and explicitly report clipping/omissions.
+- Separate plain clipboard fallback from the labelled session fragment; do not match metadata by DNA text.
+- Install map wheel handlers before paint and retain camera state across resize instead of resetting a user gesture.
+- Extend model/browser/native regressions; see [annotation guide](docs/ANNOTATIONS.md).
+
+
 ## 0.8.7 — mouse map navigation and direct DNA editing (preview)
 
 - Zoom maps at the mouse pointer (25–800%); pan by middle drag, Space + left

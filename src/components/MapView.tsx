@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useState, useRef } from 'react';
+import React, { useCallback, useEffect, useLayoutEffect, useMemo, useState, useRef } from 'react';
 import { SimpleCircularOrLinearView } from '@teselagen/ove';
 import { fromOveSelection, toOveDocument, toOveSelection, type OveRange } from '../adapters/coordinates';
 import { type OpenDocument } from '../domain/workspace';
@@ -30,8 +30,8 @@ function MapCanvas({ entry, onSelect, labels }: { entry: OpenDocument; onSelect:
     if (id !== undefined && viewport.current?.hasPointerCapture(id)) viewport.current.releasePointerCapture(id);
   }, []);
   const fit = () => { endPan(); update({ ...FIT_CAMERA }); };
-  useEffect(() => { update({ ...FIT_CAMERA }); }, [viewWidth, viewHeight, update]);
-  useEffect(() => {
+  // Camera reset belongs to explicit Fit/document changes, never an asynchronous ResizeObserver.
+  useLayoutEffect(() => {
     const node = viewport.current; if (!node) return;
     // React's delegated wheel listener may be passive. Only this viewport owns
     // the non-passive listener, not the page, toolbar, or another scroll panel.
@@ -51,8 +51,9 @@ function MapCanvas({ entry, onSelect, labels }: { entry: OpenDocument; onSelect:
     };
     const keyup = (event: KeyboardEvent) => { if (event.code === 'Space') { spaceHeld.current = false; setSpace(false); } };
     node.addEventListener('wheel', wheel, { passive: false });
+    node.dataset.navigationReady = 'true';
     window.addEventListener('keydown', keydown); window.addEventListener('keyup', keyup); window.addEventListener('blur', reset);
-    return () => { node.removeEventListener('wheel', wheel); window.removeEventListener('keydown', keydown); window.removeEventListener('keyup', keyup); window.removeEventListener('blur', reset); };
+    return () => { delete node.dataset.navigationReady; node.removeEventListener('wheel', wheel); window.removeEventListener('keydown', keydown); window.removeEventListener('keyup', keyup); window.removeEventListener('blur', reset); };
   }, [update, endPan]);
   const save = async (format: 'svg' | 'png') => {
     const svg = canvas.current?.querySelector('svg'); if (!svg) return;

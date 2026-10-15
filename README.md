@@ -39,7 +39,8 @@ native compatibility with every older macOS version has not been established.
 - Circular/linear maps, sequence tracks and a resizable side-by-side workspace.
 - Pointer-centered map zoom, middle/Space/hand-tool pan and Fit.
 - Select all, cut/copy/paste and explicit direct DNA typing with undo/redo.
-- Cross-document base-sequence copy/paste with preview, insertion/replacement and undo.
+- Cross-document DNA/annotated-fragment copy-paste with explicit transfer previews and undo.
+- Annotation multiselection, batch operations, exact segment editing and structured CDS fields.
 - Guarded sequence/annotation editing, undo/redo, motif search, extraction,
   reverse complement, origin changes, and SVG/PNG map export.
 - FASTA/plain DNA, documented GenBank/EMBL subsets, partial `.dna` import, and `.sg.json` documents.
@@ -48,7 +49,7 @@ native compatibility with every older macOS version has not been established.
 - Create a document from a selected PCR product, with feature-transfer preview and saved provenance.
 - Native Open/Save/Save As on desktop; opt-in local recovery. No account or sequence upload.
 
-[Editing and mouse controls](docs/EDITING.md) · [File compatibility](docs/FILE_FORMATS.md) · [Scientific scope](docs/SCIENCE.md) · [PCR product documents](docs/PCR_PRODUCTS.md)
+[Editing and mouse controls](docs/EDITING.md) · [File compatibility](docs/FILE_FORMATS.md) · [Scientific scope](docs/SCIENCE.md) · [PCR product documents](docs/PCR_PRODUCTS.md) · [Annotations and clipboard](docs/ANNOTATIONS.md)
 
 ## Important limits
 
